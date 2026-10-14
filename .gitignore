@@ -1,0 +1,22 @@
+# Dependencies & builds
+node_modules
+dist
+coverage
+*.tsbuildinfo
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+api/.env
+
+# Python (future FastAPI backend)
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Tooling
+.vercel
+.DS_Store
+*.log
