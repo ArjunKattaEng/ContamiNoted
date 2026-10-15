@@ -1,5 +1,26 @@
 # RecallGuard — Frontend Build Plan (synthetic data, backend placeholders)
 
+## Status
+
+| Phase | Status |
+|---|---|
+| 0. Repo setup | Done |
+| 1. TS + Tailwind/shadcn migration | Done |
+| 2. Types, services, mock backend, fixtures, hooks | Done |
+| 3. Recall screens + responsive layout (phone/tablet vs desktop) | Done |
+| 4. Scan flows and history | Done |
+| 5. Auth (mock), Profile, alerts and re-check, Developer panel | Done |
+| 6. Polish: code splitting, error boundary, states audit, safe areas, docs, demo deploy | Done, except the Vercel deploy, which needs `vercel login` |
+
+**Backend integration (in progress):**
+
+| Step | Status |
+|---|---|
+| 1. Recent recalls: FastAPI `api/` + openFDA + Gemini summaries; `VITE_LIVE_SERVICES=recalls` | Done (summaries need `GEMINI_API_KEY`; switched from OpenAI to Gemini at the user's request) |
+| 2. Barcode scan: Open Food Facts + openFDA matching | Next |
+| 3. Receipt scan: Google Document AI + LLM normalization | Planned |
+| 4. Firebase Auth + Firestore (history, alerts, saved, summary cache), re-check endpoint | Planned |
+
 ## Context
 
 RecallGuard (`/Users/rameshkatta/recallguard`) is a clickable wireframe skeleton:
@@ -10,7 +31,7 @@ RecallGuard (`/Users/rameshkatta/recallguard`) is a clickable wireframe skeleton
 Data comes from a thin `src/data/mock.js` full of placeholders ("Product Name", "Store", "$."). Several screens show hardcoded or contradictory content.
 
 The product has three use cases:
-1. **Recent recalls:** data from openFDA, with summaries from OpenAI.
+1. **Recent recalls:** data from openFDA, with summaries from an LLM (Gemini).
 2. **Barcode scan:** identify the product, search openFDA, then summarize with an LLM.
 3. **Receipt scan:** Google Document AI extracts the items, then openFDA search, then an LLM summary.
 
@@ -113,7 +134,7 @@ All brands and firms are fictional, to avoid implying that real companies issued
   - Add `RecallCard`, `ClassificationBadge`, `ScanItemRow`, `VerdictCard`, `SummarySections`, `EmptyState`, `ErrorState`, and Skeleton variants.
   - shadcn primitives live in `src/components/ui/`.
 - **Native:** `src/lib/native.js` becomes `native.ts`, behavior unchanged.
-- **Routing and layout:** keep BrowserRouter and the phone-frame layout. Add `vercel.json` with an SPA fallback rewrite so the static build deploys.
+- **Routing and layout:** keep BrowserRouter. Layout is responsive (added in Phase 3): phones and tablets get full-width pages with a bottom tab bar, and desktop (≥1024px with a mouse or trackpad) gets a sidebar and multi-column pages. Add `vercel.json` with an SPA fallback rewrite so the static build deploys.
 
 ### 6. Screens and the synthetic data each one shows (bugs found in review fixed here)
 | Route | Shows |
@@ -144,7 +165,7 @@ All brands and firms are fictional, to avoid implying that real companies issued
 - Fill in `src/services/http/*` against a FastAPI `/api` on Vercel, reusing ArchePal's `api/index.py`, `fb_admin.py` and upload/auth checks.
 - Data sources:
   - openFDA, using the old pipeline's `data_fetcher.py`.
-  - OpenAI summaries, using the old `prompt_builder.py` with Structured Outputs.
+  - Gemini summaries (structured output), using the old `prompt_builder.py` prompt.
   - Open Food Facts for barcodes.
   - Document AI Expense Parser for receipts.
 - Accounts and storage: Firebase anonymous → linked auth, and Firestore for history, alerts and the summary cache.
