@@ -10,12 +10,32 @@ import { FormField } from '@/components/FormField'
 import { Logo } from '@/components/Logo'
 import { PageTitle, Screen } from '@/components/Screen'
 import { useCurrentUser, useResetPassword, useSignIn, useSignUp, useSocialSignIn } from '@/hooks/use-auth'
+import { features } from '@/lib/features'
 import { useProducts } from '@/hooks/use-products'
 import { markOnboarded } from '@/lib/storage'
 import { isApiError } from '@/services/errors'
 import type { UserProfile } from '@/types'
 
 const errorMessage = (err: unknown) => (isApiError(err) ? err.message : 'Something went wrong. Please try again.')
+
+// Until accounts are live (features.accounts), these screens are placeholders: forms validate,
+// but nothing is created or stored, and submitting explains that accounts are coming soon.
+const accountsLive = features.accounts
+const COMING_SOON = 'Accounts are coming soon. Sign-up and log-in aren’t available yet.'
+const showComingSoon = () => toast(COMING_SOON)
+
+function ComingSoonNotice() {
+  if (accountsLive) return null
+  return (
+    <p
+      role="status"
+      className="mb-4 rounded-md border border-dashed bg-card px-3 py-2 text-center text-[13px] text-muted-foreground"
+    >
+      <span className="font-bold">Coming soon.</span> Accounts aren’t available yet. Your saved recalls stay on this
+      device for now.
+    </p>
+  )
+}
 
 function AuthLayout({ title, children, footer }: { title: string; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -24,6 +44,7 @@ function AuthLayout({ title, children, footer }: { title: string; children: Reac
         <Logo />
       </div>
       <PageTitle>{title}</PageTitle>
+      <ComingSoonNotice />
       {children}
       {footer && <div className="mt-6 text-center text-sm">{footer}</div>}
     </Screen>
@@ -42,8 +63,10 @@ function FormError({ message }: { message?: string }) {
 /** Apple / Google. Text-only for now: real buttons must follow Apple's and Google's brand guidelines. */
 function SocialSignIn({ onSignedIn }: { onSignedIn: (user: UserProfile) => void }) {
   const social = useSocialSignIn()
-  const signIn = (provider: 'apple' | 'google') =>
+  const signIn = (provider: 'apple' | 'google') => {
+    if (!accountsLive) return showComingSoon()
     social.mutate(provider, { onSuccess: onSignedIn, onError: (err) => toast(errorMessage(err)) })
+  }
   const base = 'h-12 w-full border-[1.5px] text-[15px] font-semibold normal-case tracking-normal'
   return (
     <div className="flex flex-col gap-2.5">
@@ -106,12 +129,13 @@ export function Login() {
 
   if (user && !user.isGuest && !justSignedIn.current) return <Navigate to="/profile" replace />
 
-  const onSubmit = form.handleSubmit((values) =>
+  const onSubmit = form.handleSubmit((values) => {
+    if (!accountsLive) return showComingSoon()
     signIn.mutate(values, {
       onSuccess: (u) => afterAuth(u, 'Welcome back'),
       onError: (err) => form.setError('root', { message: errorMessage(err) }),
-    }),
-  )
+    })
+  })
 
   return (
     <AuthLayout
@@ -183,15 +207,16 @@ export function SignUp() {
 
   if (user && !user.isGuest && !justSignedIn.current) return <Navigate to="/profile" replace />
 
-  const onSubmit = form.handleSubmit(({ name, email, password }) =>
+  const onSubmit = form.handleSubmit(({ name, email, password }) => {
+    if (!accountsLive) return showComingSoon()
     signUp.mutate(
       { name, email, password },
       {
         onSuccess: (u) => afterAuth(u, 'Welcome'),
         onError: (err) => form.setError('root', { message: errorMessage(err) }),
       },
-    ),
-  )
+    )
+  })
 
   return (
     <AuthLayout
@@ -237,9 +262,11 @@ export function SignUp() {
           {signUp.isPending ? 'Creating account…' : 'Create account'}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          {guestItems > 0
-            ? 'Your scans, alerts and saved recalls from this device will be kept.'
-            : 'An account keeps your scans and alerts across devices.'}
+          {!accountsLive
+            ? 'An account will keep your saved recalls on all your devices.'
+            : guestItems > 0
+              ? 'Your scans, alerts and saved recalls from this device will be kept.'
+              : 'An account keeps your scans and alerts across devices.'}
         </p>
       </form>
     </AuthLayout>
@@ -257,12 +284,13 @@ export function ForgotPassword() {
   })
   const { errors } = form.formState
 
-  const onSubmit = form.handleSubmit(({ email }) =>
+  const onSubmit = form.handleSubmit(({ email }) => {
+    if (!accountsLive) return showComingSoon()
     reset.mutate(email, {
       onSuccess: () => setSentTo(email),
       onError: (err) => form.setError('root', { message: errorMessage(err) }),
-    }),
-  )
+    })
+  })
 
   return (
     <AuthLayout

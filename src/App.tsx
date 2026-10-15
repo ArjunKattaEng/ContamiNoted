@@ -33,33 +33,12 @@ export default function App() {
         {/* Layouts have their own Suspense around <Outlet>, so the sidebar / tab bar stay put while a screen loads */}
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Onboarding & auth. Features without a backend yet render "Coming soon" (src/lib/features.ts) */}
+            {/* Onboarding & auth. Auth screens are placeholders until accounts are live (src/lib/features.ts) */}
             <Route path="/" element={<Splash />} />
             <Route path="/walkthrough/:step" element={<Walkthrough />} />
-            <Route
-              path="/login"
-              element={
-                <FeatureGate on={features.accounts} feature="accounts">
-                  <Login />
-                </FeatureGate>
-              }
-            />
-            <Route
-              path="/signup"
-              element={
-                <FeatureGate on={features.accounts} feature="accounts">
-                  <SignUp />
-                </FeatureGate>
-              }
-            />
-            <Route
-              path="/forgot-password"
-              element={
-                <FeatureGate on={features.accounts} feature="accounts">
-                  <ForgotPassword />
-                </FeatureGate>
-              }
-            />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
             {/* Camera: full-screen everywhere */}
             <Route

@@ -100,8 +100,9 @@ curl -s localhost:5173/api/recalls/<recallNumber>/summary              # full se
    - Open a recall: the FDA record shows immediately, then the full summary. Find refund, Share and Save are available.
 4. **Saved recalls.** Star a recall: it is stored on this device (`rg-saved-recalls-v1`). Profile → Saved on this device shows the count and can clear them.
 5. **Profile.** Saved-on-device summary, and Data & sources with openFDA's real last-updated date.
-6. **Coming soon.** `/scan`, `/receipts`, `/products`, `/alerts`, `/login` and `/signup` show a "Coming soon" screen and are hidden from navigation.
-7. **Layouts.** Desktop layout (sidebar, multi-column) needs a window at least 1024px wide *and* a mouse or trackpad. Narrower windows and touch devices get the phone/tablet layout.
+6. **Coming soon.** `/scan`, `/receipts`, `/products` and `/alerts` show a "Coming soon" screen and are hidden from navigation.
+7. **Sign-up placeholder.** Profile shows a guest card with Sign up / Log in. `/signup`, `/login` and `/forgot-password` show the real forms under a "Coming soon" notice. Validation works, but submitting (or Apple/Google) only shows a toast: nothing is created or stored.
+8. **Layouts.** Desktop layout (sidebar, multi-column) needs a window at least 1024px wide *and* a mouse or trackpad. Narrower windows and touch devices get the phone/tablet layout.
 
 ### 7. Tests and checks
 
@@ -211,7 +212,9 @@ Prefer CSS (`desktop:` classes). Branch in JS with `useIsDesktop()` only when th
   - Services throw `ApiError` with contract error codes (`src/services/errors.ts`).
 - **Hooks.** Screens use the React Query hooks in `src/hooks/use-*.ts` and never call services directly. Query keys live in `src/hooks/queryKeys.ts`, and `QueryClientProvider` is set up in `main.tsx`.
 - **No synthetic data.** Don't add fixtures or fake data to the app. Tests use real openFDA records (`api/tests/fixtures`) or small inline values.
-- **Auth (coming soon; `features.accounts`).** Once on, there is always a user: `useCurrentUser()` (`src/hooks/use-auth.ts`) starts a guest session automatically.
+- **Auth (coming soon; `features.accounts`).**
+  - While the flag is off, `screens/Auth.tsx` is a placeholder: `ComingSoonNotice`, and submit or social buttons call `showComingSoon()` instead of the auth hooks. Profile shows `GuestCard` (Sign up / Log in).
+  - Once on, there is always a user: `useCurrentUser()` (`src/hooks/use-auth.ts`) starts a guest session automatically.
   - Sign-in, sign-up, social, sign-out and delete-account mutations go through `useAccountSwitch`. It stores the new user and resets every `userScopedKeys` query, so the previous account's data never shows.
   - Sign-up upgrades a guest in place (history kept).
   - Auth forms use react-hook-form + zod with `FormField`. Service errors show via `form.setError('root')`.

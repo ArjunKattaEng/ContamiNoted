@@ -33,26 +33,29 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function AccountCard({ user }: { user: UserProfile }) {
+/** Shown to guests: everyone until accounts are live, then anyone not signed in. */
+function GuestCard() {
   const navigate = useNavigate()
-  if (user.isGuest) {
-    return (
-      <div className="rounded-lg border bg-card p-4">
-        <strong>You’re using RecallGuard as a guest</strong>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create a free account to keep your scans, alerts and saved recalls on all your devices.
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button size="sm" className="h-10" onClick={() => navigate('/signup')}>
-            <UserPlus /> Sign up
-          </Button>
-          <Button size="sm" variant="secondary" className="h-10" onClick={() => navigate('/login')}>
-            <LogIn /> Log in
-          </Button>
-        </div>
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <strong>You’re using RecallGuard as a guest</strong>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Create a free account to keep your saved recalls on all your devices.
+      </p>
+      {!features.accounts && <p className="mt-1 text-xs text-muted-foreground">Accounts are coming soon.</p>}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button size="sm" className="h-10" onClick={() => navigate('/signup')}>
+          <UserPlus /> Sign up
+        </Button>
+        <Button size="sm" variant="secondary" className="h-10" onClick={() => navigate('/login')}>
+          <LogIn /> Log in
+        </Button>
       </div>
-    )
-  }
+    </div>
+  )
+}
+
+function AccountCard({ user }: { user: UserProfile }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
       <div
@@ -224,11 +227,6 @@ function SavedOnDevice() {
             ? 'You haven’t saved any recalls yet. Tap the star on a recall to keep it.'
             : `${saved.length} saved ${saved.length === 1 ? 'recall' : 'recalls'}, stored in this browser or app only.`}
         </p>
-        {!features.accounts && (
-          <p className="text-muted-foreground">
-            Accounts are coming soon, so you can keep your saved recalls on every device.
-          </p>
-        )}
         {saved.length > 0 &&
           (confirming ? (
             <div className="grid grid-cols-2 gap-2">
@@ -261,7 +259,7 @@ export function Profile() {
     <Screen insetTop>
       <PageTitle>Profile</PageTitle>
       <div className="desktop:max-w-2xl">
-        {user && <AccountCard user={user} />}
+        {user && !user.isGuest ? <AccountCard user={user} /> : <GuestCard />}
         {features.alerts && user && <AlertSettings user={user} />}
         <SavedOnDevice />
         <DataSources />
