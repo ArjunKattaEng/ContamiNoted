@@ -1,7 +1,8 @@
+import { apiFetch } from '@/lib/api'
+import type { DataSourceStatus } from '@/types'
 import type { MetaService } from '../types'
-import { notImplemented } from './notImplemented'
 
 export const httpMeta: MetaService = {
-  /** GET /api/meta/data-source → DataSourceStatus */
-  dataSourceStatus: () => notImplemented('GET /api/meta/data-source'),
+  /** GET /api/meta/data-source: openFDA's last-updated date (lastWatchCheckAt arrives with accounts) */
+  dataSourceStatus: () => apiFetch<DataSourceStatus>('/api/meta/data-source'),
 }

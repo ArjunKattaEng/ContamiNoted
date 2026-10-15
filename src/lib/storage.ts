@@ -13,7 +13,7 @@ export function writeJson(key: string, value: unknown): void {
   try {
     globalThis.localStorage?.setItem(key, JSON.stringify(value))
   } catch {
-    // Storage full or unavailable: the mock keeps working in memory for this session.
+    // Storage full or unavailable: callers keep working from memory for this session.
   }
 }
 

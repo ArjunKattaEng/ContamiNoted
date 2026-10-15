@@ -1,6 +1,11 @@
-# RecallGuard (React + TypeScript skeleton)
+# RecallGuard
 
-Clickable front-end skeleton built from the RecallGuard wireframes. Mock data only — no backend yet.
+Checks your groceries against FDA food recalls, on the web (phone, tablet and desktop) and as an iOS app (Capacitor).
+
+- **Live:** recalls from openFDA, with plain-language Gemini summaries.
+- **Coming soon:** barcode and receipt scanning, purchase history, alerts and accounts. Their screens are built and switched on in `src/lib/features.ts` as each backend lands.
+
+Production: https://contami-noted.vercel.app
 
 ## Run
 
@@ -8,32 +13,23 @@ Clickable front-end skeleton built from the RecallGuard wireframes. Mock data on
 npm install
 npm run setup:api          # once: Python venv (.venv) with the backend dependencies
 cp api/.env.example api/.env   # add GEMINI_API_KEY for recall summaries (optional; root .env.local also works)
-cp .env.example .env.local     # VITE_LIVE_SERVICES=recalls uses the real backend for recalls
 npm run dev                # Vite (:5173) + FastAPI (:8000) together; Vite proxies /api
 ```
 
 Open the URL Vite prints. The layout adapts to phones, tablets and desktop (sidebar layout on wide screens with a mouse or trackpad).
 
-Recalls can come live from openFDA (with Gemini summaries) through the FastAPI backend in `api/`. Scans, history and accounts still run on synthetic demo data. Switch services between the two with `VITE_LIVE_SERVICES` (see `.env.example`). See `docs/implementation-plan.md` and `docs/api-contract.md`.
+Recalls come live from openFDA (with Gemini summaries) through the FastAPI backend in `api/`. The app uses real data only; there is no demo mode. Full setup and troubleshooting: `CLAUDE.md`. API: `docs/api-contract.md`.
 
 ```bash
 npm run typecheck && npm run lint && npm test && npm run test:api && npm run build   # all must pass
 npm run ios:run                                                  # build, sync and run on an iOS simulator/device
 ```
 
-## Demo tips
-
-- Any email and password log in as a "returning user" with sample history. The password `wrong` shows the error state. Sign up keeps your guest history.
-- On the scan screen, **Samples** gives one-tap scans for each outcome (recalled, possible match, no recall, unknown product, invalid code, sample receipt).
-- Logging in as a new user surfaces a "new recall" alert for a product in the seeded history (the re-check on open).
-- **Profile → Developer** sets network speed, forces errors or empty lists, picks the next sample receipt, and resets all demo data.
-
 ## Deploy (Vercel)
 
 `vercel.json` sends `/api/*` to the Python function `api/index.py` (FastAPI, dependencies from `requirements.txt`) and every other path to `index.html`. Set these Vercel project environment variables:
 
-- `VITE_LIVE_SERVICES=recalls` (build time)
-- `GEMINI_API_KEY`, plus optionally `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` and `OPENFDA_API_KEY`
+- `GEMINI_API_KEY` (Secret), plus optionally `OPENFDA_API_KEY` (Secret), `GEMINI_MODEL` and `GEMINI_FALLBACK_MODEL`
 
 ```bash
 vercel login
@@ -57,13 +53,12 @@ vercel deploy --prod   # production
 | Products (watchlist) | `/products` | `screens/History.tsx` |
 | Recalls (Active / Resolved / Saved + search) | `/recalls` | `screens/Recalls.tsx` |
 | Recall details (Summary / FDA details / Your items) | `/recalls/:recallNumber` | `screens/Recalls.tsx` |
-| 7.0 Profile (account, recall alerts, data & sources, developer) | `/profile` | `screens/Profile.tsx` |
+| 7.0 Profile (saved on this device, data & sources; account and alerts once live) | `/profile` | `screens/Profile.tsx` |
 
 The Integrated POS (7.1), FDA Sync Status (7.2) and Notifications (7.3) wireframes were replaced by sections of the Profile screen.
 
 ## Next steps (TODOs)
 
-- The app runs on synthetic data behind a typed service layer (`VITE_DATA_SOURCE=mock`). Next: Phase 6 polish and deploy (`docs/implementation-plan.md`), then implementing the backend in `docs/api-contract.md`.
-- Demo tips: any email logs in with sample history (the password "wrong" fails); Profile → Developer controls latency, forced errors and empty states, and the receipt scenario.
+- See "Next steps" in `CLAUDE.md`: live barcode scans, receipts (Document AI), then Firebase accounts, history and alerts.
 - Camera and barcode scanning go through `src/lib/native.ts` (Capacitor).
 - shadcn primitives are in `src/components/ui/` and app components in `src/components/`. Styling is Tailwind, with tokens in `src/index.css`.

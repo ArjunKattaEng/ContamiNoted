@@ -1,5 +1,5 @@
 // Service interfaces. Screens and hooks depend only on these; `src/services/index.ts`
-// picks the mock or HTTP implementation. Endpoint contracts: docs/api-contract.md.
+// wires the implementations (HTTP backend, plus on-device saved recalls). Endpoint contracts: docs/api-contract.md.
 import type {
   Alert,
   DataSourceStatus,

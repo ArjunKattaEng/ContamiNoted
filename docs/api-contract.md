@@ -1,6 +1,6 @@
 # RecallGuard — API Contract
 
-This is the contract the frontend is built against. The app currently runs on mock adapters (`VITE_DATA_SOURCE=mock`). The HTTP placeholder adapters in `src/services/http/` point at the endpoints below and throw `NotImplementedError` until the backend exists. The TypeScript shapes live in `src/types/index.ts`, the service interfaces in `src/services/types.ts`, and `apiFetch()` in `src/lib/api.ts` already implements the conventions below (base URL, auth header, error mapping). When an endpoint is implemented, the backend must return exactly these shapes, and the only frontend change is the body of that adapter method.
+This is the contract the frontend is built against. The HTTP adapters in `src/services/http/` call the endpoints below. Endpoints that aren't built yet throw `NotImplementedError` in their adapter, and their features show "Coming soon" (`src/lib/features.ts`). The TypeScript shapes live in `src/types/index.ts`, the service interfaces in `src/services/types.ts`, and `apiFetch()` in `src/lib/api.ts` already implements the conventions below (base URL, auth header, error mapping). When an endpoint is implemented, the backend must return exactly these shapes, and the only frontend change is the body of that adapter method.
 
 See `docs/implementation-plan.md` for the overall plan.
 
@@ -173,7 +173,7 @@ interface Page<T> { items: T[]; page: number; pageSize: number; total: number; h
 
 ## HTTP endpoints
 
-Implemented so far (`api/`): `GET /api/health` and the five `/api/recalls/*` endpoints. The rest are placeholders.
+Implemented so far (`api/`): `GET /api/health`, the five `/api/recalls/*` endpoints and `GET /api/meta/data-source` (without `lastWatchCheckAt` until accounts exist). The rest are placeholders.
 
 ### `GET /api/health`
 No auth. Response: `{ "status": "ok" }`.

@@ -63,3 +63,9 @@ class SummaryMap(CamelModel):
     """recallNumber → short summary, for the recalls that got one."""
 
     summaries: dict[str, RecallSummary]
+
+
+class DataSourceStatus(CamelModel):
+    source: Literal["openFDA food enforcement"]
+    open_fda_last_updated: str
+    last_watch_check_at: str | None = None

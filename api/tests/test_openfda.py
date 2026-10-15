@@ -108,6 +108,12 @@ class TestClient:
             run(client_returning(status).query("x", limit=5))
         assert (err.value.code, err.value.status) == ("upstream_error", 502)
 
+    def test_last_updated(self):
+        assert run(client_returning(200, {"meta": {"last_updated": "2026-10-07"}}).last_updated()) == "2026-10-07"
+        with pytest.raises(ApiError) as err:
+            run(client_returning(500).last_updated())
+        assert err.value.code == "upstream_error"
+
     def test_get_unknown_recall(self):
         with pytest.raises(ApiError) as err:
             run(client_returning(404).get("F-0000-2026"))

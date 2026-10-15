@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ImageUp, Keyboard, Loader2, Receipt, ScanBarcode, Sparkles, X } from 'lucide-react'
+import { ImageUp, Keyboard, Loader2, Receipt, ScanBarcode, X } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,12 +11,16 @@ import { blobFromUrl, prepareReceiptImage } from '@/lib/image'
 import { captureReceipt, isCancel, scanBarcode, setStatusBar, tap } from '@/lib/native'
 import { scanPath } from '@/lib/scan'
 import { cn } from '@/lib/utils'
-import { demoBarcodes, demoReceiptImage } from '@/mocks/demo'
-import { isLive } from '@/services'
+import { features } from '@/lib/features'
 import { isApiError } from '@/services/errors'
 import type { Scan as ScanResult } from '@/types'
 
 type ScanMode = 'receipt' | 'product'
+
+const availableModes = (): ScanMode[] => [
+  ...(features.receiptScan ? (['receipt'] as const) : []),
+  ...(features.barcodeScan ? (['product'] as const) : []),
+]
 
 const progressSteps: Record<ScanMode, string[]> = {
   receipt: ['Reading your receipt…', 'Finding the products…', 'Checking FDA recalls…', 'Writing your summary…'],
@@ -32,7 +36,11 @@ function ProcessingOverlay({ mode }: { mode: ScanMode }) {
     return () => clearInterval(id)
   }, [steps.length])
   return (
-    <div className="absolute inset-0 z-10 grid place-items-center bg-black/75 px-6 text-center" role="status" aria-live="polite">
+    <div
+      className="absolute inset-0 z-10 grid place-items-center bg-black/75 px-6 text-center"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="size-10 animate-spin" aria-hidden />
         <p className="text-base font-bold">{steps[step]}</p>
@@ -52,16 +60,16 @@ export function Scan() {
   useDocumentTitle('Scan')
   const close = useGoBack('/home')
   const [params] = useSearchParams()
-  const [mode, setMode] = useState<ScanMode>(params.get('mode') === 'product' ? 'product' : 'receipt')
+  const modes = availableModes()
+  const requested: ScanMode = params.get('mode') === 'product' ? 'product' : 'receipt'
+  const [mode, setMode] = useState<ScanMode>(modes.includes(requested) ? requested : modes[0])
   const [error, setError] = useState<string | null>(null)
   const [typing, setTyping] = useState(false)
   const [code, setCode] = useState('')
-  const [showSamples, setShowSamples] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const barcodeScan = useScanBarcode()
   const receiptScan = useScanReceipt()
   const busy = barcodeScan.isPending || receiptScan.isPending
-  const isMock = !isLive('scan')
 
   // Light status-bar icons while this dark screen is showing
   useEffect(() => {
@@ -84,10 +92,9 @@ export function Scan() {
     barcodeScan.mutate(raw, { onSuccess: showResult, onError: showError })
   }
 
-  const checkReceipt = async (image: Blob, { resize = true } = {}) => {
+  const checkReceipt = async (image: Blob) => {
     setError(null)
-    const prepared = resize ? await prepareReceiptImage(image) : image
-    receiptScan.mutate({ image: prepared }, { onSuccess: showResult, onError: showError })
+    receiptScan.mutate({ image: await prepareReceiptImage(image) }, { onSuccess: showResult, onError: showError })
   }
 
   const capture = async () => {
@@ -109,7 +116,6 @@ export function Scan() {
           : 'Couldn’t open the barcode scanner. You can type the barcode instead.',
       )
       if (mode === 'product') setTyping(true)
-      if (isMock) setShowSamples(true)
     }
   }
 
@@ -156,34 +162,6 @@ export function Scan() {
           </form>
         )}
 
-        {showSamples && isMock && (
-          <div className="mb-3 rounded-lg bg-black/40 p-3">
-            <p className="mb-2 text-xs text-white/70">Demo samples (synthetic data)</p>
-            <div className="flex flex-wrap gap-2">
-              {mode === 'product' ? (
-                demoBarcodes.map((sample) => (
-                  <button
-                    key={sample.code}
-                    className="rounded-full border border-white/50 px-3 py-1.5 text-sm"
-                    onClick={() => checkBarcode(sample.code)}
-                    disabled={busy}
-                  >
-                    {sample.label}
-                  </button>
-                ))
-              ) : (
-                <button
-                  className="rounded-full border border-white/50 px-3 py-1.5 text-sm"
-                  onClick={() => checkReceipt(demoReceiptImage(), { resize: false })}
-                  disabled={busy}
-                >
-                  Sample receipt
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
         {error ? (
           <p className="mb-1 text-center text-[13px] text-[#ffd2cc]" role="alert">
             {error}
@@ -194,14 +172,17 @@ export function Scan() {
           </p>
         )}
 
-        <div className="my-2 flex gap-1.5" role="radiogroup" aria-label="Scan type">
-          {(['receipt', 'product'] as const).map((m) => (
+        <div className={cn('my-2 flex gap-1.5', modes.length < 2 && 'hidden')} role="radiogroup" aria-label="Scan type">
+          {modes.map((m) => (
             <button
               key={m}
               role="radio"
               aria-checked={mode === m}
               onClick={() => switchMode(m)}
-              className={cn('flex-1 rounded-full border-[1.5px] border-white/55 p-2 capitalize', mode === m && 'bg-white text-[#111]')}
+              className={cn(
+                'flex-1 rounded-full border-[1.5px] border-white/55 p-2 capitalize',
+                mode === m && 'bg-white text-[#111]',
+              )}
             >
               {m}
             </button>
@@ -226,14 +207,7 @@ export function Scan() {
             onClick={capture}
             disabled={busy}
           />
-          {isMock ? (
-            <button className={sideButton} onClick={() => setShowSamples((s) => !s)} disabled={busy} aria-pressed={showSamples}>
-              <Sparkles className="size-6" aria-hidden />
-              Samples
-            </button>
-          ) : (
-            <span />
-          )}
+          <span />
         </div>
       </div>
 

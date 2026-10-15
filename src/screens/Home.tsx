@@ -1,4 +1,4 @@
-import { Receipt, ScanBarcode, Search, type LucideIcon } from 'lucide-react'
+import { Receipt, ScanBarcode, ScanLine, Search, Star, type LucideIcon } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertBanner } from '@/components/AlertBanner'
@@ -12,31 +12,57 @@ import { TopBar } from '@/components/TopBar'
 import { useActiveAlerts } from '@/hooks/use-alerts'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { useRecentRecalls } from '@/hooks/use-recalls'
+import { useSavedRecalls } from '@/hooks/use-saved'
 import { useScanHistory } from '@/hooks/use-scans'
+import { canScan, features } from '@/lib/features'
 import { scanPath } from '@/lib/scan'
 
-const quickActions: { label: string; icon: LucideIcon; to: string }[] = [
-  { label: 'Scan Receipt', icon: Receipt, to: '/scan?mode=receipt' },
-  { label: 'Scan Product', icon: ScanBarcode, to: '/scan?mode=product' },
-  { label: 'Check Recalls', icon: Search, to: '/recalls' },
+const quickActions: { label: string; icon: LucideIcon; to: string; show: boolean }[] = [
+  { label: 'Scan Receipt', icon: Receipt, to: '/scan?mode=receipt', show: features.receiptScan },
+  { label: 'Scan Product', icon: ScanBarcode, to: '/scan?mode=product', show: features.barcodeScan },
+  { label: 'Check Recalls', icon: Search, to: '/recalls', show: true },
 ]
+
+function SeeAll({ to }: { to: string }) {
+  return (
+    <Link to={to} className="text-xs normal-case tracking-normal text-foreground underline underline-offset-2">
+      See all
+    </Link>
+  )
+}
+
+function ListSkeleton() {
+  return (
+    <div className="flex flex-col gap-3">
+      {[0, 1, 2].map((i) => (
+        <RecallCardSkeleton key={i} />
+      ))}
+    </div>
+  )
+}
 
 function LatestRecalls() {
   const query = useRecentRecalls('active')
-
-  if (query.isPending) {
-    return (
-      <div className="flex flex-col gap-3">
-        {[0, 1, 2].map((i) => (
-          <RecallCardSkeleton key={i} />
-        ))}
-      </div>
-    )
-  }
+  if (query.isPending) return <ListSkeleton />
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
   const latest = query.data.pages[0].items.slice(0, 3)
   if (latest.length === 0) return <p className="text-sm text-muted-foreground">No active food recalls right now.</p>
   return <RecallList recalls={latest} grid={false} />
+}
+
+function SavedRecalls() {
+  const query = useSavedRecalls()
+  if (query.isPending) return <ListSkeleton />
+  if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
+  if (query.data.length === 0) {
+    return (
+      <RowCard className="border-dashed">
+        <IconTile icon={Star} />
+        <RowMeta title="No saved recalls yet">Tap the star on a recall to keep it here.</RowMeta>
+      </RowCard>
+    )
+  }
+  return <RecallList recalls={query.data.slice(0, 3).map((s) => s.recall)} grid={false} />
 }
 
 function RecentReceipts() {
@@ -69,51 +95,76 @@ function RecentReceipts() {
   )
 }
 
+/** Shown while barcode/receipt scanning isn't available yet. */
+function ScanningComingSoon() {
+  return (
+    <RowCard className="mt-1 border-dashed desktop:max-w-2xl">
+      <IconTile icon={ScanLine} />
+      <RowMeta title="Scanning is coming soon">
+        Scan a product’s barcode or a grocery receipt and we’ll check it against FDA recalls.
+      </RowMeta>
+    </RowCard>
+  )
+}
+
 export default function Home() {
   useDocumentTitle()
   const navigate = useNavigate()
   const alerts = useActiveAlerts()
+  const actions = quickActions.filter((a) => a.show)
 
   return (
     <Screen className="pt-safe-top desktop:pt-8">
       <TopBar />
       <h1 className="mb-4 hidden text-2xl font-bold desktop:block">Home</h1>
-      {alerts.data && <AlertBanner count={alerts.data.length} />}
+      {features.alerts && alerts.data && <AlertBanner count={alerts.data.length} />}
 
-      <SectionTitle>Quick Actions</SectionTitle>
-      <div className="grid grid-cols-3 gap-2.5 desktop:max-w-2xl">
-        {quickActions.map(({ label, icon: Icon, to }) => (
-          <button
-            key={label}
-            onClick={() => navigate(to)}
-            className="flex flex-col items-center gap-1.5 rounded-lg border-[1.5px] bg-card px-1 py-3.5 text-[11px] font-bold uppercase hover:bg-accent"
-          >
-            <Icon className="size-6" aria-hidden />
-            {label}
-          </button>
-        ))}
-      </div>
+      {canScan ? (
+        <>
+          <SectionTitle>Quick Actions</SectionTitle>
+          <div className="grid grid-cols-3 gap-2.5 desktop:max-w-2xl">
+            {actions.map(({ label, icon: Icon, to }) => (
+              <button
+                key={label}
+                onClick={() => navigate(to)}
+                className="flex flex-col items-center gap-1.5 rounded-lg border-[1.5px] bg-card px-1 py-3.5 text-[11px] font-bold uppercase hover:bg-accent"
+              >
+                <Icon className="size-6" aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <ScanningComingSoon />
+      )}
 
       <div className="desktop:mt-4 desktop:grid desktop:grid-cols-2 desktop:gap-8">
         <section>
           <SectionTitle className="flex items-baseline justify-between">
             Latest Recalls
-            <Link to="/recalls" className="text-xs normal-case tracking-normal text-foreground underline underline-offset-2">
-              See all
-            </Link>
+            <SeeAll to="/recalls" />
           </SectionTitle>
           <LatestRecalls />
         </section>
 
-        <section>
-          <SectionTitle className="flex items-baseline justify-between">
-            Recent Receipts
-            <Link to="/receipts" className="text-xs normal-case tracking-normal text-foreground underline underline-offset-2">
-              See all
-            </Link>
-          </SectionTitle>
-          <RecentReceipts />
-        </section>
+        {features.history ? (
+          <section>
+            <SectionTitle className="flex items-baseline justify-between">
+              Recent Receipts
+              <SeeAll to="/receipts" />
+            </SectionTitle>
+            <RecentReceipts />
+          </section>
+        ) : (
+          <section>
+            <SectionTitle className="flex items-baseline justify-between">
+              Saved Recalls
+              <SeeAll to="/recalls?tab=saved" />
+            </SectionTitle>
+            <SavedRecalls />
+          </section>
+        )}
       </div>
     </Screen>
   )

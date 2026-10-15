@@ -12,7 +12,6 @@ import { PageTitle, Screen } from '@/components/Screen'
 import { useCurrentUser, useResetPassword, useSignIn, useSignUp, useSocialSignIn } from '@/hooks/use-auth'
 import { useProducts } from '@/hooks/use-products'
 import { markOnboarded } from '@/lib/storage'
-import { isLive } from '@/services'
 import { isApiError } from '@/services/errors'
 import type { UserProfile } from '@/types'
 
@@ -157,11 +156,6 @@ export function Login() {
         <Button type="submit" disabled={signIn.isPending}>
           {signIn.isPending ? 'Logging in…' : 'Log in'}
         </Button>
-        {!isLive('auth') && (
-          <p className="text-center text-xs text-muted-foreground">
-            Demo: any email and password log in with sample history. The password “wrong” shows the error state.
-          </p>
-        )}
       </form>
     </AuthLayout>
   )

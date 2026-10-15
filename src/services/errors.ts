@@ -10,7 +10,7 @@ export type ApiErrorCode =
   | 'upstream_error'
   | 'not_implemented'
 
-/** Error thrown by every service implementation, mock or HTTP. */
+/** Error thrown by every service implementation. */
 export class ApiError extends Error {
   readonly code: ApiErrorCode
   readonly status: number

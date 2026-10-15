@@ -16,6 +16,9 @@ class FakeOpenFda:
         self.searches.append((search, limit, skip))
         return self.recalls[skip : skip + limit], len(self.recalls)
 
+    async def last_updated(self):
+        return "2026-10-07"
+
     async def get_many(self, numbers):
         return [r for r in self.recalls if r.recall_number in numbers]
 
@@ -132,6 +135,12 @@ def test_not_found(api):
     assert missing.status_code == 404
     assert missing.json() == {"error": {"code": "not_found", "message": "We couldn’t find that recall."}}
     assert client.get("/api/recalls/F-0000-2026/summary").status_code == 404
+
+
+def test_data_source(api):
+    response = api[0].get("/api/meta/data-source")
+    assert response.json() == {"source": "openFDA food enforcement", "openFdaLastUpdated": "2026-10-07"}
+    assert "s-maxage=3600" in response.headers["cache-control"]
 
 
 def test_health(api):

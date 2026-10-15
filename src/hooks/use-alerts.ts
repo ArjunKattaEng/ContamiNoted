@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { features } from '@/lib/features'
 import { services } from '@/services'
 import type { Alert } from '@/types'
 import { queryKeys } from './queryKeys'
@@ -7,6 +8,7 @@ export function useAlerts() {
   return useQuery({
     queryKey: queryKeys.alerts,
     queryFn: () => services.alerts.list(),
+    enabled: features.alerts,
   })
 }
 
@@ -15,6 +17,7 @@ export function useActiveAlerts() {
   return useQuery({
     queryKey: queryKeys.alerts,
     queryFn: () => services.alerts.list(),
+    enabled: features.alerts,
     select: (alerts) => alerts.filter((a) => !a.dismissed),
   })
 }

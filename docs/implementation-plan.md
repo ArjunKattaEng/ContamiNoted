@@ -1,5 +1,7 @@
 # RecallGuard — Frontend Build Plan (synthetic data, backend placeholders)
 
+> **Update:** the synthetic demo layer (`src/mocks`, `src/services/mock`, the Developer panel, scan samples and the demo login) has since been **removed** at the user's request. The app now uses real data only. Features without a backend show "Coming soon" behind `src/lib/features.ts`. The sections below record how the frontend was originally built.
+
 ## Status
 
 | Phase | Status |
@@ -10,13 +12,14 @@
 | 3. Recall screens + responsive layout (phone/tablet vs desktop) | Done |
 | 4. Scan flows and history | Done |
 | 5. Auth (mock), Profile, alerts and re-check, Developer panel | Done |
-| 6. Polish: code splitting, error boundary, states audit, safe areas, docs, demo deploy | Done, except the Vercel deploy, which needs `vercel login` |
+| 6. Polish: code splitting, error boundary, states audit, safe areas, docs | Done; deployed at https://contami-noted.vercel.app |
+| 7. Remove synthetic data; "Coming soon" for features without a backend | Done |
 
 **Backend integration (in progress):**
 
 | Step | Status |
 |---|---|
-| 1. Recent recalls: FastAPI `api/` + openFDA + Gemini summaries; `VITE_LIVE_SERVICES=recalls` | Done (summaries need `GEMINI_API_KEY`; switched from OpenAI to Gemini at the user's request) |
+| 1. Recent recalls: FastAPI `api/` + openFDA + Gemini summaries (+ `/api/meta/data-source`) | Done (summaries need `GEMINI_API_KEY`; switched from OpenAI to Gemini at the user's request) |
 | 2. Barcode scan: Open Food Facts + openFDA matching | Next |
 | 3. Receipt scan: Google Document AI + LLM normalization | Planned |
 | 4. Firebase Auth + Firestore (history, alerts, saved, summary cache), re-check endpoint | Planned |

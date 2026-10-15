@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/Logo'
 import { Screen } from '@/components/Screen'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { features } from '@/lib/features'
 import { hasOnboarded, markOnboarded } from '@/lib/storage'
 import { cn } from '@/lib/utils'
 
@@ -25,15 +26,17 @@ export function Splash() {
       </div>
       <div className="flex w-full flex-col gap-3">
         <Button onClick={() => navigate('/walkthrough/1')}>Get Started</Button>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            markOnboarded()
-            navigate('/login')
-          }}
-        >
-          I already have an account
-        </Button>
+        {features.accounts && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              markOnboarded()
+              navigate('/login')
+            }}
+          >
+            I already have an account
+          </Button>
+        )}
       </div>
     </Screen>
   )
@@ -74,12 +77,16 @@ export function Walkthrough() {
         {last ? (
           <>
             <Button onClick={() => finish('/home')}>Start checking</Button>
-            <Button variant="secondary" onClick={() => finish('/signup')}>
-              Create an account
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              No account needed to start. You can sign up later to keep your history.
-            </p>
+            {features.accounts && (
+              <>
+                <Button variant="secondary" onClick={() => finish('/signup')}>
+                  Create an account
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  No account needed to start. You can sign up later to keep your history.
+                </p>
+              </>
+            )}
           </>
         ) : (
           <Button onClick={() => navigate(`/walkthrough/${step + 1}`)}>Next</Button>

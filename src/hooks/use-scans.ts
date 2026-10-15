@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { canScan, features } from '@/lib/features'
 import { services } from '@/services'
 import type { Scan, ScanType } from '@/types'
 import { queryKeys } from './queryKeys'
@@ -7,7 +8,7 @@ export function useScan(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.scans.detail(id ?? ''),
     queryFn: () => services.scan.getScan(id!),
-    enabled: !!id,
+    enabled: canScan && !!id,
   })
 }
 
@@ -15,6 +16,7 @@ export function useScanHistory(type: ScanType) {
   return useQuery({
     queryKey: queryKeys.scans.list(type),
     queryFn: () => services.history.listScans(type),
+    enabled: features.history,
   })
 }
 

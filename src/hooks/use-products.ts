@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { features } from '@/lib/features'
 import { services } from '@/services'
 import { queryKeys } from './queryKeys'
 
@@ -7,6 +8,7 @@ export function useProducts() {
   return useQuery({
     queryKey: queryKeys.products,
     queryFn: () => services.history.listProducts(),
+    enabled: features.history,
   })
 }
 

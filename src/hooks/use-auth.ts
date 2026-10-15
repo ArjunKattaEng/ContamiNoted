@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { features } from '@/lib/features'
 import { services, type SignUpInput } from '@/services'
 import type { UserPrefs, UserProfile } from '@/types'
 import { queryKeys, userScopedKeys } from './queryKeys'
 
-/** The current user. There is always one: a guest session starts automatically. */
+/** The current user (a guest session starts automatically). Undefined while accounts are "Coming soon". */
 export function useCurrentUser() {
   return useQuery({
     queryKey: queryKeys.user,
     queryFn: () => services.auth.current(),
     staleTime: Infinity,
+    enabled: features.accounts,
   })
 }
 

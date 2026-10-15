@@ -17,7 +17,6 @@ import { useScan } from '@/hooks/use-scans'
 import { formatUpc } from '@/lib/barcode'
 import { formatDate, formatTimestampDate } from '@/lib/format'
 import { byAttention, formatPrice } from '@/lib/scan'
-import { isLive } from '@/services'
 import { isApiError } from '@/services/errors'
 import type { Scan, ScanType } from '@/types'
 
@@ -40,7 +39,11 @@ function ScanQueryState({ query, type }: { query: UseQueryResult<Scan>; type: Sc
         icon={FileQuestion}
         title="Scan not found"
         action={
-          <Button variant="secondary" size="sm" onClick={() => navigate(type === 'receipt' ? '/receipts' : '/products')}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(type === 'receipt' ? '/receipts' : '/products')}
+          >
             {type === 'receipt' ? 'View receipts' : 'View products'}
           </Button>
         }
@@ -66,20 +69,14 @@ function ResultActions({ type, isDesktop }: { type: ScanType; isDesktop: boolean
   )
   if (isDesktop) return <div className="grid grid-cols-2 gap-2">{buttons}</div>
   return (
-    <div className="flex flex-none gap-2 border-t bg-card px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 md:px-6">{buttons}</div>
+    <div className="flex flex-none gap-2 border-t bg-card px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 md:px-6">
+      {buttons}
+    </div>
   )
 }
 
 /** Desktop: main column + 360px side column. Phones/tablets: one column, actions pinned below. */
-function ResultLayout({
-  type,
-  main,
-  side,
-}: {
-  type: ScanType
-  main: ReactNode
-  side: ReactNode
-}) {
+function ResultLayout({ type, main, side }: { type: ScanType; main: ReactNode; side: ReactNode }) {
   const isDesktop = useIsDesktop()
   if (isDesktop) {
     return (
@@ -230,12 +227,6 @@ export function BarcodeResult() {
         <StatusIcon status={item.status} />
       </section>
       {item.note && <p className="text-sm">{item.note}</p>}
-      {!isLive('scan') && product?.name === 'Unknown product' && (
-        <p className="rounded-md border border-dashed bg-card p-3 text-sm text-muted-foreground">
-          Demo mode: barcode scans are checked against a small catalog of fictional products, so real products show as
-          unknown. Use <strong>Samples</strong> on the scan screen to try each result.
-        </p>
-      )}
       <VerdictCard verdict={scan.verdict} counts={scan.counts} />
     </>
   )

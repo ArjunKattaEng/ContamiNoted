@@ -139,6 +139,16 @@ class OpenFdaClient:
         total = int(body.get("meta", {}).get("results", {}).get("total", len(results)))
         return results, total
 
+    async def last_updated(self) -> str | None:
+        """openFDA's `meta.last_updated` (YYYY-MM-DD) for the food enforcement dataset."""
+        try:
+            response = await self._http.get().get(build_url(None, limit=1, sort=None, api_key=self._api_key))
+            response.raise_for_status()
+            return response.json().get("meta", {}).get("last_updated")
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("openFDA last_updated failed: %s", exc)
+            raise ApiError("upstream_error", "The FDA recall service isn’t responding. Please try again.", 502) from exc
+
     async def get_many(self, recall_numbers: list[str]) -> list[Recall]:
         """Recalls for the given numbers (unknown ones are simply missing), in one request."""
         results, _ = await self.query(recall_numbers_query(recall_numbers), limit=min(len(recall_numbers), 50), sort=None)
@@ -149,3 +159,4 @@ class OpenFdaClient:
         if not results:
             raise ApiError("not_found", "We couldn’t find that recall.", 404)
         return results[0]
+

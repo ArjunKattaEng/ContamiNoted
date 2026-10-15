@@ -1,29 +1,20 @@
-import { useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Bell, ExternalLink, LogIn, UserPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { NativeSelect } from '@/components/ui/native-select'
 import { toast } from '@/components/ui/sonner'
 import { MenuRow } from '@/components/MenuRow'
 import { PageTitle, Screen, SectionTitle } from '@/components/Screen'
 import { ToggleRow } from '@/components/ToggleRow'
 import { useRecheck } from '@/hooks/use-alerts'
 import { useCurrentUser, useDeleteAccount, useSignOut, useUpdatePrefs } from '@/hooks/use-auth'
+import { queryKeys } from '@/hooks/queryKeys'
 import { useDataSourceStatus } from '@/hooks/use-meta'
+import { useSavedRecalls } from '@/hooks/use-saved'
 import { formatDate, formatTimeAgo } from '@/lib/format'
-import {
-  getMockConfig,
-  receiptScenarioOptions,
-  resetDemoData,
-  setMockConfig,
-  subscribeMockConfig,
-  type MockConfig,
-  type MockLatency,
-  type ReceiptScenario,
-} from '@/mocks/demo'
-import { isLive, usesDemoData } from '@/services'
+import { features } from '@/lib/features'
+import { clearLocalSaved } from '@/services/local/saved'
 import type { UserProfile } from '@/types'
 
 const initials = (user: UserProfile) =>
@@ -124,20 +115,9 @@ function DataSources() {
   return (
     <Section title="Data & sources">
       <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
-        {usesDemoData && (
-          <p>
-            <Badge variant="warn">Demo data</Badge>{' '}
-            <span className="text-muted-foreground">
-              {isLive('recalls')
-                ? 'Recalls are live from openFDA. Scans, your history and accounts still use synthetic sample data.'
-                : 'You’re seeing synthetic sample data. Brands, products and recalls are fictional.'}
-            </span>
-          </p>
-        )}
         <p>
-          {isLive('recalls') ? 'Recalls come' : 'When live, recalls come'} from the FDA’s openFDA food enforcement
-          reports{status && isLive('meta') && <> (last updated {formatDate(status.openFdaLastUpdated)})</>}. Product
-          lookups will use Open Food Facts, and receipts will be read with Google Document AI.
+          Recalls come from the FDA’s openFDA food enforcement reports
+          {status && <> (last updated {formatDate(status.openFdaLastUpdated)})</>}.
         </p>
         <p className="text-muted-foreground">
           Recall summaries are written by AI. Always compare the codes and dates on your package with the official FDA
@@ -151,83 +131,6 @@ function DataSources() {
         >
           FDA recalls website <ExternalLink className="size-3.5" aria-hidden />
         </a>
-      </div>
-    </Section>
-  )
-}
-
-/** Mock-backend controls for demos and reviewing loading / empty / error states. */
-function DeveloperPanel() {
-  const queryClient = useQueryClient()
-  const config = useSyncExternalStore(subscribeMockConfig, getMockConfig)
-
-  const update = (patch: Partial<MockConfig>) => {
-    setMockConfig(patch)
-    queryClient.invalidateQueries()
-  }
-
-  const reset = () => {
-    resetDemoData()
-    queryClient.clear()
-    toast('Demo data reset. You’re a new guest.')
-  }
-
-  return (
-    <Section title="Developer">
-      <div className="rounded-lg border border-dashed bg-card px-3">
-        <label className="flex items-center justify-between gap-3 border-b py-3">
-          <span>
-            <strong className="block text-sm">Network speed</strong>
-            <small className="text-muted-foreground">Simulated latency of every call</small>
-          </span>
-          <NativeSelect
-            className="max-w-40 flex-none"
-            value={config.latency}
-            onChange={(e) => update({ latency: e.target.value as MockLatency })}
-          >
-            <option value="none">Instant</option>
-            <option value="normal">Normal</option>
-            <option value="slow">Slow (3×)</option>
-          </NativeSelect>
-        </label>
-        <ToggleRow
-          label="Force errors"
-          description="Every data call fails (sign-in still works)"
-          checked={config.forceError}
-          onChange={(forceError) => update({ forceError })}
-        />
-        <ToggleRow
-          label="Force empty lists"
-          description="Recalls, history and alerts come back empty"
-          checked={config.forceEmpty}
-          onChange={(forceEmpty) => update({ forceEmpty })}
-        />
-        <label className="flex items-center justify-between gap-3 border-b py-3">
-          <span>
-            <strong className="block text-sm">Next receipt scan</strong>
-            <small className="text-muted-foreground">Which sample receipt is returned</small>
-          </span>
-          <NativeSelect
-            className="max-w-48 flex-none"
-            value={config.receiptScenario}
-            onChange={(e) => update({ receiptScenario: e.target.value as ReceiptScenario })}
-          >
-            {receiptScenarioOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-        <div className="flex items-center justify-between gap-3 py-3">
-          <span>
-            <strong className="block text-sm">Reset demo data</strong>
-            <small className="text-muted-foreground">Deletes all mock accounts, scans and alerts</small>
-          </span>
-          <Button variant="secondary" size="sm" onClick={reset}>
-            Reset
-          </Button>
-        </div>
       </div>
     </Section>
   )
@@ -300,22 +203,71 @@ function AccountActions({ user }: { user: UserProfile }) {
   )
 }
 
+/** Saved recalls live on this device until accounts exist. */
+function SavedOnDevice() {
+  const queryClient = useQueryClient()
+  const saved = useSavedRecalls().data ?? []
+  const [confirming, setConfirming] = useState(false)
+
+  const clear = () => {
+    clearLocalSaved()
+    queryClient.invalidateQueries({ queryKey: queryKeys.saved })
+    setConfirming(false)
+    toast('Saved recalls cleared')
+  }
+
+  return (
+    <Section title="Saved on this device">
+      <div className="space-y-3 rounded-lg border bg-card p-4 text-sm">
+        <p>
+          {saved.length === 0
+            ? 'You haven’t saved any recalls yet. Tap the star on a recall to keep it.'
+            : `${saved.length} saved ${saved.length === 1 ? 'recall' : 'recalls'}, stored in this browser or app only.`}
+        </p>
+        {!features.accounts && (
+          <p className="text-muted-foreground">
+            Accounts are coming soon, so you can keep your saved recalls on every device.
+          </p>
+        )}
+        {saved.length > 0 &&
+          (confirming ? (
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="secondary" size="sm" className="h-10" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" size="sm" className="h-10" onClick={clear}>
+                Clear saved
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-3 text-destructive hover:text-destructive"
+              onClick={() => setConfirming(true)}
+            >
+              Clear saved recalls
+            </Button>
+          ))}
+      </div>
+    </Section>
+  )
+}
+
 export function Profile() {
   const user = useCurrentUser().data
 
   return (
     <Screen insetTop>
       <PageTitle>Profile</PageTitle>
-      {user && (
-        <div className="desktop:max-w-2xl">
-          <AccountCard user={user} />
-          <AlertSettings user={user} />
-          <DataSources />
-          {usesDemoData && <DeveloperPanel />}
-          <AccountActions user={user} />
-          <p className="mt-6 text-center text-xs text-muted-foreground">RecallGuard {__APP_VERSION__}</p>
-        </div>
-      )}
+      <div className="desktop:max-w-2xl">
+        {user && <AccountCard user={user} />}
+        {features.alerts && user && <AlertSettings user={user} />}
+        <SavedOnDevice />
+        <DataSources />
+        {user && <AccountActions user={user} />}
+        <p className="mt-6 text-center text-xs text-muted-foreground">RecallGuard {__APP_VERSION__}</p>
+      </div>
     </Screen>
   )
 }

@@ -24,7 +24,7 @@ import { formatDate } from '@/lib/format'
 import { isCancel, shareRecall } from '@/lib/native'
 import { itemOrigin } from '@/lib/scan'
 import { cn } from '@/lib/utils'
-import { isDemoRecall } from '@/services'
+import { features } from '@/lib/features'
 import { isApiError } from '@/services/errors'
 import type { Recall, RecallSummary, RecallSummarySections, RecallTab } from '@/types'
 
@@ -50,7 +50,9 @@ function RecallFeed({ status }: { status: RecallTab }) {
   if (recalls.length === 0) {
     return (
       <EmptyState icon={ShieldCheck} title={status === 'active' ? 'No active food recalls' : 'No resolved recalls'}>
-        {status === 'active' ? 'Good news: there are no ongoing FDA food recalls right now.' : 'Closed recalls will show up here.'}
+        {status === 'active'
+          ? 'Good news: there are no ongoing FDA food recalls right now.'
+          : 'Closed recalls will show up here.'}
       </EmptyState>
     )
   }
@@ -137,7 +139,7 @@ export function Recalls() {
 
   return (
     <>
-      <ScreenHeader title="Recalls" />
+      <ScreenHeader title="Recalls" back={false} />
       <Screen>
         <SearchInput value={input} onChange={setInput} placeholder="Search by product, brand or hazard" />
         {q.length >= 2 ? (
@@ -202,7 +204,9 @@ function SummarySections({ recall, loading }: { recall: Recall; loading: boolean
   if (!sections) {
     return (
       <div className="space-y-2 text-sm">
-        <p className="text-muted-foreground">An AI summary isn’t available for this recall yet. Here is the FDA’s description:</p>
+        <p className="text-muted-foreground">
+          An AI summary isn’t available for this recall yet. Here is the FDA’s description:
+        </p>
         <p>{recall.reasonForRecall}</p>
       </div>
     )
@@ -216,9 +220,8 @@ function SummarySections({ recall, loading }: { recall: Recall; loading: boolean
         </section>
       ))}
       <p className="border-t pt-3 text-xs text-muted-foreground">
-        {isDemoRecall(recall)
-          ? 'Demo data: this recall and its summary are fictional sample content, not a real FDA record.'
-          : 'Summary written by AI from the FDA enforcement record. Always compare the codes and dates on your package with the official FDA notice.'}
+        Summary written by AI from the FDA enforcement record. Always compare the codes and dates on your package with
+        the official FDA notice.
       </p>
     </div>
   )
@@ -265,7 +268,10 @@ function YourItems({ recallNumber }: { recallNumber: string }) {
   return (
     <ul className="space-y-2">
       {matches.map((a) => (
-        <li key={a.id} className={cn('flex items-center justify-between gap-2 text-sm', a.dismissed && 'text-muted-foreground')}>
+        <li
+          key={a.id}
+          className={cn('flex items-center justify-between gap-2 text-sm', a.dismissed && 'text-muted-foreground')}
+        >
           <span className="min-w-0">
             {a.itemName}
             <small className="block text-xs text-muted-foreground">{itemOrigin(a)}</small>
@@ -378,7 +384,11 @@ export function RecallDetail() {
             <EmptyState
               icon={FileQuestion}
               title="Recall not found"
-              action={<Button variant="secondary" size="sm" onClick={() => navigate('/recalls')}>Browse recalls</Button>}
+              action={
+                <Button variant="secondary" size="sm" onClick={() => navigate('/recalls')}>
+                  Browse recalls
+                </Button>
+              }
             >
               It may have been removed, or the link is wrong.
             </EmptyState>
@@ -454,9 +464,11 @@ export function RecallDetail() {
                   {saveButton}
                 </div>
               </div>
-              <DesktopCard title="Your items">
-                <YourItems recallNumber={recall.recallNumber} />
-              </DesktopCard>
+              {features.alerts && (
+                <DesktopCard title="Your items">
+                  <YourItems recallNumber={recall.recallNumber} />
+                </DesktopCard>
+              )}
               <DesktopCard title="FDA record">
                 <FdaDetails recall={recall} />
               </DesktopCard>
@@ -476,7 +488,7 @@ export function RecallDetail() {
           <TabsList>
             <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="details">FDA details</TabsTrigger>
-            <TabsTrigger value="items">Your items</TabsTrigger>
+            {features.alerts && <TabsTrigger value="items">Your items</TabsTrigger>}
           </TabsList>
           <TabsContent value="summary">
             <SummarySections recall={recall} loading={summaryLoading} />
@@ -484,9 +496,11 @@ export function RecallDetail() {
           <TabsContent value="details">
             <FdaDetails recall={recall} />
           </TabsContent>
-          <TabsContent value="items">
-            <YourItems recallNumber={recall.recallNumber} />
-          </TabsContent>
+          {features.alerts && (
+            <TabsContent value="items">
+              <YourItems recallNumber={recall.recallNumber} />
+            </TabsContent>
+          )}
         </Tabs>
       </Screen>
       <div className="flex flex-none gap-2 border-t bg-card px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 md:px-6">
