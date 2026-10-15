@@ -1,0 +1,6 @@
+# Not needed by the web build or the Python function
+ios/
+.venv/
+api/tests/
+api/.env
+docs/
