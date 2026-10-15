@@ -22,3 +22,17 @@ const ONBOARDED_KEY = 'rg-onboarded-v1'
 /** Whether the first-launch walkthrough has been completed or skipped. */
 export const hasOnboarded = () => readJson<boolean>(ONBOARDED_KEY) === true
 export const markOnboarded = () => writeJson(ONBOARDED_KEY, true)
+
+/** localStorage keys left behind by the removed demo mode (mock accounts, scans, settings). */
+const RETIRED_KEYS = ['rg-mock-db-v1', 'rg-mock-config-v1']
+
+/** Delete data from the removed demo mode, so no fictional accounts or scans linger in the browser. */
+export function removeRetiredData(): void {
+  for (const key of RETIRED_KEYS) {
+    try {
+      globalThis.localStorage?.removeItem(key)
+    } catch {
+      // Storage unavailable: nothing to clean up
+    }
+  }
+}
