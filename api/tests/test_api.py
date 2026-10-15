@@ -11,9 +11,11 @@ class FakeOpenFda:
     def __init__(self, recalls):
         self.recalls = recalls
         self.searches: list[tuple[str, int, int]] = []
+        self.sorts: list[str] = []
 
     async def query(self, search, *, limit, skip=0, sort="report_date:desc"):
         self.searches.append((search, limit, skip))
+        self.sorts.append(sort)
         return self.recalls[skip : skip + limit], len(self.recalls)
 
     async def last_updated(self):
@@ -77,6 +79,23 @@ def test_recent_page_shape_and_paging(api):
     assert fda.searches[-1] == ('status:"Ongoing"', 5, 5)
     assert "recall_number" not in body["items"][0] and "recallNumber" in body["items"][0]
     assert "s-maxage=900" in response.headers["cache-control"]
+
+
+def test_days_window(api):
+    client, fda, _ = api
+    client.get("/api/recalls/recent", params={"status": "active", "days": 30})
+    assert "+AND+report_date:[" in fda.searches[-1][0] and fda.sorts[-1] == "report_date:desc"
+    # Resolved windows go by closing date, newest closed first
+    client.get("/api/recalls/recent", params={"status": "resolved", "days": 30})
+    assert "+AND+termination_date:[" in fda.searches[-1][0] and fda.sorts[-1] == "termination_date:desc"
+    client.get("/api/recalls/recent", params={"status": "resolved"})
+    assert "termination_date" not in fda.searches[-1][0] and fda.sorts[-1] == "report_date:desc"
+    client.get("/api/recalls/search", params={"q": "milk", "days": 7})
+    assert 'product_description:"milk"' in fda.searches[-1][0] and "report_date:[" in fda.searches[-1][0]
+    client.get("/api/recalls/recent")
+    assert "report_date" not in fda.searches[-1][0]
+    for bad in (0, 4000, "x"):
+        assert client.get("/api/recalls/recent", params={"days": bad}).status_code == 400
 
 
 def test_lists_never_wait_for_the_model(api, recalls):

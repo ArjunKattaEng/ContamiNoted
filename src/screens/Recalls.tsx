@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { FileQuestion, Share2, ShieldCheck, Star, SearchX } from 'lucide-react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
@@ -22,6 +23,7 @@ import { useRecall, useRecallSearch, useRecallSummary, useRecentRecalls } from '
 import { useSavedRecalls } from '@/hooks/use-saved'
 import { formatDate } from '@/lib/format'
 import { isCancel, shareRecall } from '@/lib/native'
+import { DEFAULT_RECALL_WINDOW, parseRecallWindow, RECALL_WINDOWS, recallWindowLabel } from '@/lib/recall'
 import { itemOrigin } from '@/lib/scan'
 import { cn } from '@/lib/utils'
 import { features } from '@/lib/features'
@@ -41,23 +43,98 @@ function ListSkeleton() {
   )
 }
 
-function RecallFeed({ status }: { status: RecallTab }) {
-  const query = useRecentRecalls(status)
-  if (query.isPending) return <ListSkeleton />
+interface WindowProps {
+  /** Time window in days; null = all time. */
+  days: number | null
+  onDaysChange: (days: number | null) => void
+}
+
+/** "Reported: Last 30 days ▾" (or "Closed: …" for resolved recalls). A native select keeps the iOS picker. */
+function WindowFilter({ days, onDaysChange, verb }: WindowProps & { verb: 'Reported' | 'Closed' }) {
+  return (
+    <label className="flex flex-none items-center gap-2 text-sm text-muted-foreground">
+      {verb}
+      <NativeSelect
+        className="h-9 flex-none text-sm text-foreground"
+        value={days ?? 'all'}
+        onChange={(e) => onDaysChange(e.target.value === 'all' ? null : Number(e.target.value))}
+      >
+        {RECALL_WINDOWS.map((w) => (
+          <option key={w.label} value={w.days ?? 'all'}>
+            {w.label}
+          </option>
+        ))}
+      </NativeSelect>
+    </label>
+  )
+}
+
+/** Count on the left, window filter on the right. */
+function ListHeader({ children, filter }: { children: ReactNode; filter: ReactNode }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <p className="text-sm text-muted-foreground" role="status">
+        {children}
+      </p>
+      {filter}
+    </div>
+  )
+}
+
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`
+
+function RecallFeed({ status, days, onDaysChange }: { status: RecallTab } & WindowProps) {
+  const query = useRecentRecalls(status, days)
+  const verb = status === 'active' ? 'Reported' : 'Closed'
+  const filter = <WindowFilter days={days} onDaysChange={onDaysChange} verb={verb} />
+  const windowLabel = recallWindowLabel(days)
+
+  if (query.isPending) {
+    return (
+      <>
+        <ListHeader filter={filter}>Loading…</ListHeader>
+        <ListSkeleton />
+      </>
+    )
+  }
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
 
   const recalls = query.data.pages.flatMap((p) => p.items)
+  const total = query.data.pages[0].total
   if (recalls.length === 0) {
     return (
-      <EmptyState icon={ShieldCheck} title={status === 'active' ? 'No active food recalls' : 'No resolved recalls'}>
-        {status === 'active'
-          ? 'Good news: there are no ongoing FDA food recalls right now.'
-          : 'Closed recalls will show up here.'}
-      </EmptyState>
+      <>
+        <ListHeader filter={filter}>No recalls</ListHeader>
+        <EmptyState
+          icon={ShieldCheck}
+          title={
+            status === 'active'
+              ? `No food recalls reported in the ${windowLabel}`
+              : `No recalls closed in the ${windowLabel}`
+          }
+          action={
+            days !== null && (
+              <Button variant="secondary" size="sm" onClick={() => onDaysChange(null)}>
+                Show all time
+              </Button>
+            )
+          }
+        >
+          {status === 'active'
+            ? 'Ongoing FDA food recalls reported in this period will show up here.'
+            : 'Recalls the FDA closes in this period will show up here.'}
+        </EmptyState>
+      </>
     )
   }
   return (
     <>
+      <ListHeader filter={filter}>
+        {status === 'active'
+          ? plural(total, 'active recall', 'active recalls')
+          : plural(total, 'resolved recall', 'resolved recalls')}
+        {days !== null && (status === 'active' ? ` reported in the ${windowLabel}` : ` closed in the ${windowLabel}`)}
+      </ListHeader>
       <RecallList recalls={recalls} />
       {query.hasNextPage && (
         <Button
@@ -87,33 +164,69 @@ function SavedList() {
   return <RecallList recalls={query.data.map((s) => s.recall)} />
 }
 
-function SearchResults({ q }: { q: string }) {
-  const query = useRecallSearch(q)
-  if (query.isPending) return <ListSkeleton />
+function SearchResults({ q, days, onDaysChange }: { q: string } & WindowProps) {
+  const query = useRecallSearch(q, days)
+  const filter = <WindowFilter days={days} onDaysChange={onDaysChange} verb="Reported" />
+  const windowLabel = recallWindowLabel(days)
+
+  if (query.isPending) {
+    return (
+      <>
+        <ListHeader filter={filter}>Searching…</ListHeader>
+        <ListSkeleton />
+      </>
+    )
+  }
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
   if (query.data.items.length === 0) {
     return (
-      <EmptyState icon={SearchX} title={`No recalls found for “${q}”`}>
-        Try a brand, a product, or a hazard such as “Listeria” or “milk”.
-      </EmptyState>
+      <>
+        <ListHeader filter={filter}>No matches</ListHeader>
+        <EmptyState
+          icon={SearchX}
+          title={days === null ? `No recalls found for “${q}”` : `No recalls for “${q}” in the ${windowLabel}`}
+          action={
+            days !== null && (
+              <Button variant="secondary" size="sm" onClick={() => onDaysChange(null)}>
+                Search all time
+              </Button>
+            )
+          }
+        >
+          Try a brand, a product, or a hazard such as “Listeria” or “milk”.
+        </EmptyState>
+      </>
     )
   }
   return (
     <>
-      <p className="mb-2 text-sm text-muted-foreground" role="status">
-        {query.data.total === 1 ? '1 recall' : `${query.data.total} recalls`} match “{q}”
-      </p>
+      <ListHeader filter={filter}>
+        {plural(query.data.total, 'recall', 'recalls')} match “{q}”{days !== null && ` in the ${windowLabel}`}
+      </ListHeader>
       <RecallList recalls={query.data.items} />
     </>
   )
 }
 
-/** Recall list: Active / Resolved / Saved tabs plus search. Tab and query live in the URL. */
+/** Recall list: Active / Resolved / Saved tabs plus search, filtered to a time window (default 30 days). Tab, query and window live in the URL. */
 export function Recalls() {
   const [params, setParams] = useSearchParams()
   const tab = listTabs.find((t) => t === params.get('tab')) ?? 'active'
   const [input, setInput] = useState(params.get('q') ?? '')
   const q = useDebouncedValue(input.trim(), 300)
+  const days = parseRecallWindow(params.get('days'))
+
+  // The 30-day default keeps the URL clean; other windows are kept in ?days= (all time = "all")
+  const setDays = (value: number | null) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value === DEFAULT_RECALL_WINDOW) next.delete('days')
+        else next.set('days', value === null ? 'all' : String(value))
+        return next
+      },
+      { replace: true },
+    )
 
   useEffect(() => {
     setParams(
@@ -144,7 +257,7 @@ export function Recalls() {
         <SearchInput value={input} onChange={setInput} placeholder="Search by product, brand or hazard" />
         {q.length >= 2 ? (
           <div className="mt-4">
-            <SearchResults q={q} />
+            <SearchResults q={q} days={days} onDaysChange={setDays} />
           </div>
         ) : (
           <Tabs value={tab} onValueChange={setTab} className="mt-2">
@@ -154,10 +267,10 @@ export function Recalls() {
               <TabsTrigger value="saved">Saved</TabsTrigger>
             </TabsList>
             <TabsContent value="active">
-              <RecallFeed status="active" />
+              <RecallFeed status="active" days={days} onDaysChange={setDays} />
             </TabsContent>
             <TabsContent value="resolved">
-              <RecallFeed status="resolved" />
+              <RecallFeed status="resolved" days={days} onDaysChange={setDays} />
             </TabsContent>
             <TabsContent value="saved">
               <SavedList />
@@ -241,6 +354,7 @@ function FdaDetails({ recall }: { recall: Recall }) {
     ['Reason', recall.reasonForRecall],
     ['Initiated', formatDate(recall.recallInitiationDate)],
     ['Reported', formatDate(recall.reportDate)],
+    ['Closed', recall.terminationDate && formatDate(recall.terminationDate)],
     ['Type', recall.voluntaryMandated],
   ]
   return (

@@ -3,22 +3,22 @@ import { services } from '@/services'
 import type { RecallSummary, RecallTab } from '@/types'
 import { queryKeys } from './queryKeys'
 
-/** Recent recalls for a tab, paged ("load more"). */
-export function useRecentRecalls(status: RecallTab) {
+/** Recent recalls for a tab, paged ("load more"). `days` = time window, null = all time. */
+export function useRecentRecalls(status: RecallTab, days: number | null = null) {
   return useInfiniteQuery({
-    queryKey: queryKeys.recalls.list(status),
-    queryFn: ({ pageParam }) => services.recalls.listRecent({ status, page: pageParam }),
+    queryKey: queryKeys.recalls.list(status, days),
+    queryFn: ({ pageParam }) => services.recalls.listRecent({ status, days: days ?? undefined, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
   })
 }
 
 /** Recall search; idle until the query has 2+ characters. Keeps the previous results while typing. */
-export function useRecallSearch(q: string) {
+export function useRecallSearch(q: string, days: number | null = null) {
   const query = q.trim()
   return useQuery({
-    queryKey: queryKeys.recalls.search(query),
-    queryFn: () => services.recalls.search(query),
+    queryKey: queryKeys.recalls.search(query, days),
+    queryFn: () => services.recalls.search(query, { days: days ?? undefined }),
     enabled: query.length >= 2,
     placeholderData: keepPreviousData,
   })

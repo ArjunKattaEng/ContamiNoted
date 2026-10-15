@@ -96,6 +96,8 @@ curl -s localhost:5173/api/recalls/<recallNumber>/summary              # full se
 2. **Home.** Latest recalls (live) and your saved recalls, plus a "Scanning is coming soon" card.
 3. **Recalls** (tab on phones, sidebar on desktop):
    - Active, Resolved and Saved tabs, plus search by product, brand or hazard (e.g. "listeria cheese").
+   - A time-window filter defaults to the **last 30 days**; the options are 7 days, 30 days, 90 days, a year and all time. It's kept in the URL as `?days=7|90|365|all`.
+   - Active and search filter by report date. Resolved filters and sorts by **closing date** (`termination_date`), and its cards show "Closed <date>". Saved is not filtered.
    - Lists appear in about a second, and one-line summaries fill in a few seconds later.
    - Open a recall: the FDA record shows immediately, then the full summary. Find refund, Share and Save are available.
 4. **Saved recalls.** Star a recall: it is stored on this device (`rg-saved-recalls-v1`). Profile → Saved on this device shows the count and can clear them.
@@ -143,7 +145,7 @@ npm run ios:run      # build, sync and launch in a simulator/device (or `npm run
 FastAPI, deployed as a Vercel Python function: `vercel.json` rewrites `/api/(.*)` to `api/index.py`, and dependencies live in the root `requirements.txt`. Settings come from env vars (`api/config.py`; locally `api/.env`, see `api/.env.example`).
 
 - **Live so far:**
-  - `/api/recalls/recent|search|summaries|{recallNumber}|{recallNumber}/summary` (`api/routers/recalls.py`).
+  - `/api/recalls/recent|search|summaries|{recallNumber}|{recallNumber}/summary` (`api/routers/recalls.py`). `recent` and `search` take `?days=N` (`within_days` in `api/services/openfda.py`); resolved windows use `termination_date`.
   - `/api/meta/data-source` (`api/routers/meta.py`): openFDA's `meta.last_updated`.
 
   Recall details: Lists and detail never wait for the AI: they return FDA data plus any cached summary.

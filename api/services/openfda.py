@@ -6,6 +6,7 @@ real response fixtures. Request handling follows the old food-recall-pipeline's 
 
 import logging
 import re
+from datetime import date, timedelta
 from typing import Any, Literal
 from urllib.parse import quote
 
@@ -36,6 +37,15 @@ def search_query(q: str) -> str:
         raise ApiError("invalid_request", "Search for a product, brand or hazard.", 400)
     clauses = ["(" + "+".join(f'{field}:"{word}"' for field in SEARCH_FIELDS) + ")" for word in words]
     return "+AND+".join(clauses)
+
+
+def within_days(search: str, days: int | None, today: date | None = None, field: str = "report_date") -> str:
+    """Limit a search to the last `days` days of `field` (None = all time)."""
+    if not days:
+        return search
+    end = today or date.today()
+    start = end - timedelta(days=days)
+    return f"{search}+AND+{field}:[{start:%Y%m%d}+TO+{end:%Y%m%d}]"
 
 
 def recall_number_query(recall_number: str) -> str:
@@ -107,6 +117,7 @@ def normalize(record: dict[str, Any]) -> Recall:
         recall_initiation_date=initiated or reported,
         report_date=reported,
         voluntary_mandated=_clean(record.get("voluntary_mandated")),
+        termination_date=_date(record.get("termination_date")),
     )
 
 

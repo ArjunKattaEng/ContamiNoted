@@ -55,11 +55,14 @@ export interface Recall {
   /** YYYY-MM-DD */
   reportDate: string
   voluntaryMandated?: string
+  /** YYYY-MM-DD, when FDA closed the recall (Terminated recalls only) */
+  terminationDate?: string
   summary: RecallSummary | null
 }
 
 /** Compact recall snapshot embedded in alerts and saved recalls. */
-export type RecallRef = Pick<Recall, 'recallNumber' | 'productDescription' | 'classification' | 'status' | 'reportDate'>
+export type RecallRef = Pick<Recall, 'recallNumber' | 'productDescription' | 'classification' | 'status' | 'reportDate'> &
+  Partial<Pick<Recall, 'terminationDate'>>
 
 export interface Product {
   /** Normalized UPC-A (12 digits) where possible. */

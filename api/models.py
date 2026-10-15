@@ -48,6 +48,7 @@ class Recall(CamelModel):
     recall_initiation_date: str
     report_date: str
     voluntary_mandated: str | None = None
+    termination_date: str | None = None  # when FDA closed the recall (Terminated recalls only)
     summary: RecallSummary | None = None
 
 

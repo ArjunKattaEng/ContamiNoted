@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Star } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatReported } from '@/lib/format'
+import { formatDate, formatReported } from '@/lib/format'
 import { tap } from '@/lib/native'
 import { cn } from '@/lib/utils'
 import type { Recall, RecallRef } from '@/types'
@@ -30,7 +30,10 @@ export function RecallCard({ recall, saved, matched, summaryLoading, onOpen, onT
         </div>
         <strong className="line-clamp-2 leading-snug">{recall.productDescription}</strong>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {recall.recallingFirm ? `${recall.recallingFirm} · ` : ''}{formatReported(recall.reportDate)}
+          {recall.recallingFirm ? `${recall.recallingFirm} · ` : ''}
+          {recall.status !== 'Ongoing' && recall.terminationDate
+            ? `Closed ${formatDate(recall.terminationDate)}`
+            : formatReported(recall.reportDate)}
         </p>
         {recall.summary?.shortSummary ? (
           <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{recall.summary.shortSummary}</p>

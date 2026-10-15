@@ -23,9 +23,13 @@ export interface PageParams {
 }
 
 export interface RecallsService {
-  /** Latest recalls, newest report date first. Summaries (short only) are included when already cached. */
-  listRecent(params: { status: RecallTab } & PageParams): Promise<Page<Recall>>
-  search(q: string, params?: PageParams): Promise<Page<Recall>>
+  /**
+   * Latest recalls, newest report date first. Summaries (short only) are included when already cached.
+   * `days` limits to the last N days: by report date for active, by closing date for resolved.
+   */
+  listRecent(params: { status: RecallTab; days?: number } & PageParams): Promise<Page<Recall>>
+  /** `days` limits to recalls reported in the last N days. */
+  search(q: string, params?: { days?: number } & PageParams): Promise<Page<Recall>>
   /** One recall, returned as soon as the FDA data is in (summary only if already cached). Throws ApiError `not_found`. */
   get(recallNumber: string): Promise<Recall>
   /** Short summaries for up to 25 recalls (recalls without one are absent from the map). */

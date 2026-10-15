@@ -3,7 +3,7 @@
 Lists and detail return FDA data immediately, with summaries only when already cached; the app then
 asks the summary endpoints, so a slow or overloaded model never holds up the recall itself.
 
-  GET /api/recalls/recent | /search           page of recalls (cached short summaries only)
+  GET /api/recalls/recent | /search           page of recalls (cached short summaries only), optional ?days=N
   GET /api/recalls/summaries?numbers=A,B,…    one-line summaries, generated in one batched model call
   GET /api/recalls/{recallNumber}             one recall (cached full summary only)
   GET /api/recalls/{recallNumber}/summary     full sectioned summary
@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from api.deps import get_openfda, get_summarizer
 from api.errors import ApiError
 from api.models import Recall, RecallPage, RecallSummary, SummaryMap
-from api.services.openfda import STATUS_SEARCH, OpenFdaClient, search_query
+from api.services.openfda import STATUS_SEARCH, OpenFdaClient, search_query, within_days
 from api.services.summarizer import Summarizer
 
 router = APIRouter(prefix="/api/recalls", tags=["recalls"])
@@ -32,8 +32,16 @@ def _with_cached_summaries(recalls: list[Recall], summarizer: Summarizer) -> lis
     return [r.model_copy(update={"summary": summarizer.cached_short(r)}) for r in recalls]
 
 
-async def _page(openfda: OpenFdaClient, summarizer: Summarizer, search: str, page: int, page_size: int, response: Response) -> RecallPage:
-    recalls, total = await openfda.query(search, limit=page_size, skip=(page - 1) * page_size)
+async def _page(
+    openfda: OpenFdaClient,
+    summarizer: Summarizer,
+    search: str,
+    page: int,
+    page_size: int,
+    response: Response,
+    sort: str = "report_date:desc",
+) -> RecallPage:
+    recalls, total = await openfda.query(search, limit=page_size, skip=(page - 1) * page_size, sort=sort)
     response.headers["Cache-Control"] = FULL_CACHE
     return RecallPage(
         items=_with_cached_summaries(recalls, summarizer),
@@ -48,24 +56,30 @@ async def _page(openfda: OpenFdaClient, summarizer: Summarizer, search: str, pag
 async def recent(
     response: Response,
     status: Literal["active", "resolved"] = "active",
+    days: int | None = Query(None, ge=1, le=3650, description="Only recalls reported in the last N days; omit for all time"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50, alias="pageSize"),
     openfda: OpenFdaClient = Depends(get_openfda),
     summarizer: Summarizer = Depends(get_summarizer),
 ) -> RecallPage:
-    return await _page(openfda, summarizer, STATUS_SEARCH[status], page, page_size, response)
+    if status == "resolved" and days:
+        # "Resolved in the last N days" means closed then: most resolved recalls were reported long ago
+        search = within_days(STATUS_SEARCH[status], days, field="termination_date")
+        return await _page(openfda, summarizer, search, page, page_size, response, sort="termination_date:desc")
+    return await _page(openfda, summarizer, within_days(STATUS_SEARCH[status], days), page, page_size, response)
 
 
 @router.get("/search", response_model=RecallPage, response_model_exclude_none=True)
 async def search(
     response: Response,
     q: str = Query(min_length=2, max_length=100),
+    days: int | None = Query(None, ge=1, le=3650, description="Only recalls reported in the last N days; omit for all time"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50, alias="pageSize"),
     openfda: OpenFdaClient = Depends(get_openfda),
     summarizer: Summarizer = Depends(get_summarizer),
 ) -> RecallPage:
-    return await _page(openfda, summarizer, search_query(q), page, page_size, response)
+    return await _page(openfda, summarizer, within_days(search_query(q), days), page, page_size, response)
 
 
 @router.get("/summaries", response_model=SummaryMap, response_model_exclude_none=True)

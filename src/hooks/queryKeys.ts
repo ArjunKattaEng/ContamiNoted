@@ -5,8 +5,8 @@ export const queryKeys = {
   user: ['auth', 'user'] as const,
   recalls: {
     all: ['recalls'] as const,
-    list: (status: RecallTab) => ['recalls', 'list', status] as const,
-    search: (q: string) => ['recalls', 'search', q] as const,
+    list: (status: RecallTab, days: number | null) => ['recalls', 'list', status, days ?? 'all'] as const,
+    search: (q: string, days: number | null) => ['recalls', 'search', q, days ?? 'all'] as const,
     detail: (recallNumber: string) => ['recalls', 'detail', recallNumber] as const,
     summaries: (recallNumbers: string[]) => ['recalls', 'summaries', recallNumbers.join(',')] as const,
     summary: (recallNumber: string) => ['recalls', 'summary', recallNumber] as const,

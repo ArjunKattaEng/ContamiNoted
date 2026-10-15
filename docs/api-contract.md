@@ -58,6 +58,7 @@ interface Recall {
   recallInitiationDate: string    // YYYY-MM-DD
   reportDate: string              // YYYY-MM-DD
   voluntaryMandated?: string
+  terminationDate?: string        // YYYY-MM-DD, when FDA closed the recall (Terminated recalls only)
   summary: RecallSummary | null   // list endpoints may return only shortSummary (see below)
 }
 
@@ -184,6 +185,7 @@ Latest openFDA food recalls, newest `reportDate` first.
 | Query | Default | Notes |
 |---|---|---|
 | `status` | `active` | `active` → Ongoing; `resolved` → Completed or Terminated |
+| `days` | all time | 1–3650. Active: reported in the last N days (by `report_date`). Resolved: **closed** in the last N days (by `termination_date`, newest closed first), since most resolved recalls were reported long ago. With a window, Completed recalls without a termination date are left out |
 | `page`, `pageSize` | `1`, `20` | `pageSize` ≤ 50 |
 
 Response `Page<Recall>`. Returned as soon as openFDA answers: the AI never delays a list.
@@ -196,6 +198,7 @@ Service method: `recalls.listRecent({ status, page })`.
 | Query | Notes |
 |---|---|
 | `q` | Required, 2–100 chars. Searched across product description, firm and reason |
+| `days` | Optional, 1–3650: only recalls reported in the last N days. Omit for all time |
 | `page`, `pageSize` | as above |
 
 Response `Page<Recall>` (cached short summaries only, as above). Service method: `recalls.search(q)`.

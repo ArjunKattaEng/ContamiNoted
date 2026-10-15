@@ -5,7 +5,18 @@ import httpx
 import pytest
 
 from api.errors import ApiError
-from api.services.openfda import STATUS_SEARCH, OpenFdaClient, build_url, normalize, recall_number_query, recall_numbers_query, search_query
+from datetime import date
+
+from api.services.openfda import (
+    STATUS_SEARCH,
+    OpenFdaClient,
+    build_url,
+    normalize,
+    recall_number_query,
+    recall_numbers_query,
+    search_query,
+    within_days,
+)
 
 
 def run(coro):
@@ -31,6 +42,8 @@ class TestNormalize:
             assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", recall.report_date)
             assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", recall.recall_initiation_date)
             assert recall.summary is None
+            if raw.get("termination_date"):
+                assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", recall.termination_date or "")
 
     def test_dates_codes_and_missing_fields(self):
         recall = normalize(
@@ -54,6 +67,7 @@ class TestNormalize:
         assert recall.product_description == "Baby Spinach 5 oz"
         assert recall.code_info == "UPC 0 12345 67890 5 Lots 1-3"
         assert (recall.recall_initiation_date, recall.report_date) == ("2026-10-01", "2026-10-08")
+        assert recall.termination_date is None
         assert recall.city is None
 
     def test_camel_case_json(self, recalls):
@@ -80,6 +94,14 @@ class TestQueries:
         with pytest.raises(ApiError) as err:
             recall_number_query("../etc")
         assert err.value.status == 404
+
+    def test_date_window(self):
+        today = date(2026, 10, 14)
+        assert within_days('status:"Ongoing"', 30, today) == 'status:"Ongoing"+AND+report_date:[20260914+TO+20261014]'
+        assert within_days('status:"Ongoing"', None, today) == 'status:"Ongoing"'
+        assert within_days("x", 7, today, field="termination_date") == "x+AND+termination_date:[20261007+TO+20261014]"
+        url = build_url(within_days(STATUS_SEARCH["active"], 7, today), limit=1)
+        assert "report_date:[20261007+TO+20261014]" in url
 
     def test_several_recall_numbers(self):
         assert recall_numbers_query(["H-1-2026", "H-1407-2026", "H-1407-2026", "bad"]) == 'recall_number:("H-1407-2026")'
