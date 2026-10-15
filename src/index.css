@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. Colors are HSL triplets so Tailwind can apply opacity (e.g. bg-primary/90). */
+@layer base {
+  :root {
+    --background: 0 0% 96.5%;
+    --foreground: 0 0% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 13%;
+    --primary: 0 0% 23%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 23%;
+    --muted: 0 0% 89%;
+    --muted-foreground: 0 0% 47%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 13%;
+    --destructive: 6 63% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 7 80% 93%;
+    --success: 146 50% 36%;
+    --success-soft: 145 47% 92%;
+    --warning: 47 100% 27%;
+    --warning-soft: 47 100% 92%;
+    --border: 0 0% 83%;
+    --input: 0 0% 83%;
+    --ring: 0 0% 23%;
+    --radius: 0.625rem;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply m-0 bg-background font-sans text-foreground;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  #root {
+    @apply w-full;
+  }
+  /* Native-feeling taps: no text selection or iOS long-press callout on controls */
+  button,
+  a,
+  [role='button'],
+  [role='tab'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* iOS Safari/WKWebView zooms into inputs under 16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@layer components {
+  /* App shell height; 100vh first for iOS < 15.4, which lacks dvh */
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    /* Landscape iPhone: keep content out from under the notch / Dynamic Island */
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+  }
+}
