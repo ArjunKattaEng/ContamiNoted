@@ -1,0 +1,162 @@
+rules_version = '2';
+
+// RecallGuard: every document belongs to one signed-in user, under users/{uid}. Nobody can read or write
+// anyone else's data, list other users, or write a field the app doesn't use. Deploy with
+//   npx firebase deploy --only firestore:rules --project <your-project-id>
+// after testing against the emulators (npm run emulators, npm run test:rules).
+//
+// Unlike apps with Cloud Functions, users may delete their own documents: removing a product and deleting
+// the account happen in the app (there is no server-side code with Firestore access).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isShortString(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    function isTimestamp(value) {
+      // ISO 8601 UTC strings written by the app, e.g. "2026-10-17T12:00:00Z" or "2026-10-17T12:00:00.000Z"
+      return value is string && value.size() <= 40 && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$');
+    }
+
+    function isDate(value) {
+      return value is string && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function optional(data, key, type) {
+      return !(key in data) || (type == 'string' && data[key] is string && data[key].size() <= 300)
+        || (type == 'number' && data[key] is number)
+        || (type == 'map' && data[key] is map);
+    }
+
+    function validPrefs(prefs) {
+      return prefs is map
+        && prefs.keys().hasOnly(['recheckOnOpen'])
+        && prefs.recheckOnOpen is bool;
+    }
+
+    // A compact recall snapshot (RecallRef) embedded in saved recalls and alerts
+    function validRecallRef(recall) {
+      return recall is map
+        && recall.keys().hasAll(['recallNumber', 'productDescription', 'classification', 'status', 'reportDate'])
+        && recall.keys().hasOnly(['recallNumber', 'productDescription', 'classification', 'status', 'reportDate', 'terminationDate'])
+        && isShortString(recall.recallNumber, 40)
+        && recall.productDescription is string && recall.productDescription.size() <= 20000
+        && recall.classification in ['Class I', 'Class II', 'Class III']
+        && recall.status in ['Ongoing', 'Completed', 'Terminated']
+        && (recall.reportDate == '' || isDate(recall.reportDate))
+        && (!('terminationDate' in recall) || isDate(recall.terminationDate));
+    }
+
+    // ---- Profile: users/{userId} ---------------------------------------------------------------------
+    match /users/{userId} {
+      function validProfile(data) {
+        return data.keys().hasAll(['uid', 'email', 'createdAt', 'updatedAt', 'prefs'])
+          && data.keys().hasOnly(['uid', 'email', 'displayName', 'createdAt', 'updatedAt', 'prefs', 'lastWatchCheckAt'])
+          && (!('displayName' in data) || isShortString(data.displayName, 100))
+          && isTimestamp(data.createdAt)
+          && isTimestamp(data.updatedAt)
+          && validPrefs(data.prefs)
+          && (!('lastWatchCheckAt' in data) || isTimestamp(data.lastWatchCheckAt));
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && validProfile(request.resource.data);
+      allow update: if isOwner(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'prefs', 'lastWatchCheckAt', 'updatedAt'])
+        && validProfile(request.resource.data);
+      allow delete: if isOwner(userId);
+
+      // ---- Saved recalls: users/{userId}/savedRecalls/{recallNumber} ----------------------------------
+      match /savedRecalls/{recallNumber} {
+        function validSaved(data) {
+          return data.keys().hasAll(['recallNumber', 'savedAt', 'recall'])
+            && data.keys().hasOnly(['recallNumber', 'savedAt', 'recall'])
+            && data.recallNumber == recallNumber
+            && isTimestamp(data.savedAt)
+            && validRecallRef(data.recall)
+            && data.recall.recallNumber == recallNumber;
+        }
+
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validSaved(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // ---- Scans: users/{userId}/scans/{productId} (one per barcode: "barcode-<upc>") ------------------
+      match /scans/{productId} {
+        function validScan(data) {
+          return data.keys().hasAll(['id', 'type', 'createdAt', 'items', 'matchedRecalls', 'counts'])
+            && data.keys().hasOnly(['id', 'type', 'createdAt', 'store', 'purchaseDate', 'total', 'product', 'items',
+                                    'matchedRecalls', 'verdict', 'counts', 'previousIds'])
+            && isShortString(data.id, 100)
+            && data.type in ['barcode', 'receipt']
+            && isTimestamp(data.createdAt)
+            && data.items is list && data.items.size() <= 200
+            && data.matchedRecalls is list && data.matchedRecalls.size() <= 50
+            && data.counts is map
+            && data.counts.keys().hasOnly(['total', 'confirmed', 'possible', 'clear', 'error'])
+            && optional(data, 'store', 'string')
+            && optional(data, 'purchaseDate', 'string')
+            && optional(data, 'total', 'number')
+            && optional(data, 'product', 'map')
+            && (!('verdict' in data) || data.verdict == null || data.verdict is map)
+            && (!('previousIds' in data) || (data.previousIds is list && data.previousIds.size() <= 50));
+          // List items (scan items, matched recalls) can't be checked one by one in rules; their size is
+          // capped above and by Firestore's 1 MiB document limit, and they only affect the owner's own data.
+        }
+
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && productId.size() <= 120 && validScan(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // ---- Alerts: users/{userId}/alerts/{alertId} ("<recallNumber>_<itemId>") ------------------------
+      match /alerts/{alertId} {
+        function validAlert(data) {
+          return data.keys().hasAll(['id', 'recallNumber', 'itemId', 'itemName', 'source', 'confidence', 'recall',
+                                     'createdAt', 'dismissed'])
+            && data.keys().hasOnly(['id', 'recallNumber', 'itemId', 'itemName', 'source', 'store', 'confidence',
+                                    'recall', 'createdAt', 'dismissed'])
+            && data.id == alertId
+            && data.id == data.recallNumber + '_' + data.itemId
+            && isShortString(data.itemName, 300)
+            && data.source in ['barcode', 'receipt']
+            && optional(data, 'store', 'string')
+            && data.confidence in ['confirmed', 'possible']
+            && validRecallRef(data.recall)
+            && data.recall.recallNumber == data.recallNumber
+            && isTimestamp(data.createdAt)
+            && data.dismissed is bool;
+        }
+
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && validAlert(request.resource.data);
+        // Dismissing, or upgrading "possible" to "confirmed"; what the alert is about never changes
+        allow update: if isOwner(userId)
+          && validAlert(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissed', 'confidence', 'recall', 'itemName']);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Everything else is closed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

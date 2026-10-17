@@ -17,6 +17,8 @@ export function useDeleteProduct() {
   return useMutation({
     mutationFn: (id: string) => services.history.deleteProduct(id),
     onSettled: () => {
+      // The product's scans are gone too: drop their cached result pages
+      queryClient.removeQueries({ queryKey: queryKeys.scans.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.products })
       queryClient.invalidateQueries({ queryKey: queryKeys.alerts })
     },

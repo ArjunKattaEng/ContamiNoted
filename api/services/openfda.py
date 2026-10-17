@@ -48,6 +48,35 @@ def within_days(search: str, days: int | None, today: date | None = None, field:
     return f"{search}+AND+{field}:[{start:%Y%m%d}+TO+{end:%Y%m%d}]"
 
 
+# Fields a recall prints UPCs in
+UPC_FIELDS = ("product_description", "code_info", "more_code_info")
+BRAND_FIELDS = ("product_description", "recalling_firm")
+
+
+def _phrase(text: str) -> str:
+    """A quoted openFDA phrase ("+" separates words, like the spaces it stands for)."""
+    return '"' + "+".join(text.split()) + '"'
+
+
+def any_phrase_query(phrases: list[str], fields: tuple[str, ...]) -> str:
+    """Any of the phrases in any of the fields."""
+    return "(" + "+".join(f"{field}:{_phrase(p)}" for p in phrases for field in fields) + ")"
+
+
+def all_words_query(terms: list[list[str]], fields: tuple[str, ...]) -> str:
+    """Every term in at least one of the fields; each term is a list of alternative spellings."""
+    return "+AND+".join(any_phrase_query(alternatives, fields) for alternatives in terms)
+
+
+def ongoing_or_recent(search: str, days: int, today: date | None = None) -> str:
+    """Limit a search to recalls that are still ongoing (whenever reported) or were reported in the last
+    `days` days. Scans use this: food stays in kitchens, but a long-closed recall shouldn't flag today's
+    purchase."""
+    end = today or date.today()
+    start = end - timedelta(days=days)
+    return f'{search}+AND+(status:"Ongoing"+report_date:[{start:%Y%m%d}+TO+{end:%Y%m%d}])'
+
+
 def recall_number_query(recall_number: str) -> str:
     if not re.fullmatch(r"[A-Z]-\d{3,5}-\d{4}", recall_number):
         raise ApiError("not_found", "We couldn’t find that recall.", 404)

@@ -9,6 +9,10 @@ export type ApiErrorCode =
   | 'quota_exceeded'
   | 'upstream_error'
   | 'not_implemented'
+  // Accounts (Firebase Auth), mapped in src/services/firebase/errors.ts
+  | 'cancelled'
+  | 'popup_blocked'
+  | 'requires_recent_login'
 
 /** Error thrown by every service implementation. */
 export class ApiError extends Error {

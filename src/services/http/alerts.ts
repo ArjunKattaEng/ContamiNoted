@@ -9,4 +9,5 @@ export const httpAlerts: AlertsService = {
   dismiss: () => notImplemented('Firestore update users/{uid}/alerts/{id}'),
   /** POST /api/watchlist/check → { checkedAt, skipped, newAlerts } */
   recheck: () => notImplemented('POST /api/watchlist/check'),
+  lastCheck: () => notImplemented('last check'),
 }

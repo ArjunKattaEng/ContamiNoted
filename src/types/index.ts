@@ -169,6 +169,36 @@ export interface SavedRecall {
   recall: RecallRef
 }
 
+/** POST /api/watchlist/check request (guest mode). */
+export interface WatchCheckRequest {
+  items: WatchCheckItem[]
+  /** Last check (or oldest scan), YYYY-MM-DD */
+  since?: string
+}
+
+/** One product sent to POST /api/watchlist/check (guest mode). */
+export interface WatchCheckItem {
+  id: string
+  upc?: string
+  name: string
+  brand?: string
+}
+
+export interface WatchCheckMatch {
+  itemId: string
+  recallNumber: string
+  confidence: 'confirmed' | 'possible'
+  recall: RecallRef
+}
+
+/** POST /api/watchlist/check (guest mode): matches between the sent products and recent recalls. */
+export interface WatchCheckResult {
+  checkedAt: string
+  /** First report date checked, YYYY-MM-DD */
+  since: string
+  matches: WatchCheckMatch[]
+}
+
 export interface RecheckResult {
   checkedAt: string
   skipped: boolean
@@ -184,6 +214,8 @@ export interface UserProfile {
   isGuest: boolean
   displayName?: string
   email?: string
+  /** How the account signs in (decides how deleting it is confirmed). Absent for guests. */
+  signInMethod?: 'password' | 'google'
   createdAt: string
   prefs: UserPrefs
 }

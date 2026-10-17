@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MailCheck } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -12,11 +12,15 @@ import { PageTitle, Screen } from '@/components/Screen'
 import { useCurrentUser, useResetPassword, useSignIn, useSignUp, useSocialSignIn } from '@/hooks/use-auth'
 import { features } from '@/lib/features'
 import { useProducts } from '@/hooks/use-products'
+import { useSavedRecalls } from '@/hooks/use-saved'
+import { isNative } from '@/lib/native'
 import { markOnboarded } from '@/lib/storage'
 import { isApiError } from '@/services/errors'
 import type { UserProfile } from '@/types'
 
 const errorMessage = (err: unknown) => (isApiError(err) ? err.message : 'Something went wrong. Please try again.')
+/** The user closed the Google window: nothing to say. */
+const isCancelled = (err: unknown) => isApiError(err) && err.code === 'cancelled'
 
 // Until accounts are live (features.accounts), these screens are placeholders: forms validate,
 // but nothing is created or stored, and submitting explains that accounts are coming soon.
@@ -31,8 +35,8 @@ function ComingSoonNotice() {
       role="status"
       className="mb-4 rounded-md border border-dashed bg-card px-3 py-2 text-center text-[13px] text-muted-foreground"
     >
-      <span className="font-bold">Coming soon.</span> Accounts aren’t available yet. Your saved recalls stay on this
-      device for now.
+      <span className="font-bold">Coming soon.</span> Accounts aren’t available yet. Your scans, alerts and saved
+      recalls stay on this device for now.
     </p>
   )
 }
@@ -60,31 +64,47 @@ function FormError({ message }: { message?: string }) {
   )
 }
 
-/** Apple / Google. Text-only for now: real buttons must follow Apple's and Google's brand guidelines. */
-function SocialSignIn({ onSignedIn }: { onSignedIn: (user: UserProfile) => void }) {
+/**
+ * The official Google "G" mark, if it has been added (public/brand/google-g.svg, downloaded from Google's
+ * sign-in branding guidelines; we don't redraw it). Without the file the button is text-only.
+ */
+function GoogleMark() {
+  const [missing, setMissing] = useState(false)
+  if (missing) return null
+  return <img src="/brand/google-g.svg" alt="" aria-hidden className="size-5" onError={() => setMissing(true)} />
+}
+
+/**
+ * Google sign-in, in a popup. Not offered in the iOS app (Google blocks its sign-in page inside app web views;
+ * that needs a native plugin, and Sign in with Apple alongside it). Sign in with Apple isn't built yet.
+ * `beforeSignIn` can stop it (e.g. the age check on sign-up) by returning false.
+ */
+function SocialSignIn({
+  onSignedIn,
+  onError,
+  beforeSignIn,
+}: {
+  onSignedIn: (user: UserProfile) => void
+  onError: (message: string) => void
+  beforeSignIn?: () => boolean
+}) {
   const social = useSocialSignIn()
-  const signIn = (provider: 'apple' | 'google') => {
+  if (isNative) return null
+  const signIn = () => {
     if (!accountsLive) return showComingSoon()
-    social.mutate(provider, { onSuccess: onSignedIn, onError: (err) => toast(errorMessage(err)) })
+    if (beforeSignIn && !beforeSignIn()) return
+    social.mutate(undefined, {
+      onSuccess: onSignedIn,
+      onError: (err) => {
+        if (!isCancelled(err)) onError(errorMessage(err))
+      },
+    })
   }
-  const base = 'h-12 w-full border-[1.5px] text-[15px] font-semibold normal-case tracking-normal'
   return (
     <div className="flex flex-col gap-2.5">
-      <Button
-        variant="ghost"
-        className={`${base} border-black bg-black text-white hover:bg-black/85 hover:text-white`}
-        disabled={social.isPending}
-        onClick={() => signIn('apple')}
-      >
-        Continue with Apple
-      </Button>
-      <Button
-        variant="ghost"
-        className={`${base} border-input bg-card`}
-        disabled={social.isPending}
-        onClick={() => signIn('google')}
-      >
-        Continue with Google
+      <Button variant="social" disabled={social.isPending} onClick={signIn}>
+        {accountsLive && <GoogleMark />}
+        {social.isPending ? 'Signing in…' : 'Continue with Google'}
       </Button>
       <div className="my-2 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
@@ -154,7 +174,10 @@ export function Login() {
         </>
       }
     >
-      <SocialSignIn onSignedIn={(u) => afterAuth(u, 'Welcome back')} />
+      <SocialSignIn
+        onSignedIn={(u) => afterAuth(u, 'Welcome back')}
+        onError={(message) => form.setError('root', { message })}
+      />
       <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
         <FormField
           label="Email"
@@ -180,6 +203,11 @@ export function Login() {
         <Button type="submit" disabled={signIn.isPending}>
           {signIn.isPending ? 'Logging in…' : 'Log in'}
         </Button>
+        {accountsLive && (
+          <p className="text-center text-xs text-muted-foreground">
+            Anything saved on this device moves into your account when you log in.
+          </p>
+        )}
       </form>
     </AuthLayout>
   )
@@ -191,17 +219,45 @@ const signUpSchema = z
     email: z.string().trim().email('Enter a valid email address'),
     password: z.string().min(6, 'Use at least 6 characters'),
     confirm: z.string(),
+    oldEnough: z.boolean().refine((v) => v, 'Accounts are for people 13 and older'),
   })
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords don’t match' })
 
+/** Age confirmation for sign-up (accounts are for people 13 and older). */
+const AgeCheck = forwardRef<HTMLInputElement, ComponentProps<'input'> & { error?: string }>(({ error, ...props }, ref) => {
+  const id = useId()
+  return (
+    <div>
+      <label htmlFor={id} className="flex items-center gap-2 text-sm">
+        <input
+          ref={ref}
+          id={id}
+          type="checkbox"
+          className="size-4 accent-primary"
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
+          {...props}
+        />
+        I’m 13 or older
+      </label>
+      {error && (
+        <p id={`${id}-error`} className="mt-1 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+})
+AgeCheck.displayName = 'AgeCheck'
+
 export function SignUp() {
   const user = useCurrentUser().data
-  const guestItems = useProducts().data?.length ?? 0
+  const guestItems = (useProducts().data?.length ?? 0) + (useSavedRecalls().data?.length ?? 0)
   const signUp = useSignUp()
   const { afterAuth, justSignedIn } = useAfterAuth()
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: '', email: '', password: '', confirm: '' },
+    defaultValues: { name: '', email: '', password: '', confirm: '', oldEnough: false },
   })
   const { errors } = form.formState
 
@@ -230,7 +286,27 @@ export function SignUp() {
         </>
       }
     >
-      <SocialSignIn onSignedIn={(u) => afterAuth(u, 'Welcome')} />
+      <p className="mb-3 text-center text-xs text-muted-foreground">
+        {!accountsLive
+          ? 'An account will keep your scans, alerts and saved recalls on all your devices.'
+          : guestItems > 0
+            ? 'Your scans, alerts and saved recalls from this device will move into your account.'
+            : 'An account keeps your scans, alerts and saved recalls on all your devices.'}{' '}
+        <Link to="/privacy" className="underline underline-offset-2">
+          What we store
+        </Link>
+      </p>
+      <SocialSignIn
+        onSignedIn={(u) => afterAuth(u, 'Welcome')}
+        onError={(message) => form.setError('root', { message })}
+        beforeSignIn={() => {
+          // Synchronous, so the Google window still opens from the click
+          if (form.getValues('oldEnough')) return true
+          form.setError('oldEnough', { message: 'Tick “I’m 13 or older” first: accounts are for people 13 and older' })
+          form.setFocus('oldEnough')
+          return false
+        }}
+      />
       <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
         <FormField label="Name" autoComplete="name" error={errors.name?.message} {...form.register('name')} />
         <FormField
@@ -257,17 +333,14 @@ export function SignUp() {
           error={errors.confirm?.message}
           {...form.register('confirm')}
         />
+        <AgeCheck
+          error={errors.oldEnough?.message}
+          {...form.register('oldEnough', { onChange: () => form.clearErrors('oldEnough') })}
+        />
         <FormError message={errors.root?.message} />
         <Button type="submit" disabled={signUp.isPending}>
           {signUp.isPending ? 'Creating account…' : 'Create account'}
         </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          {!accountsLive
-            ? 'An account will keep your saved recalls on all your devices.'
-            : guestItems > 0
-              ? 'Your scans, alerts and saved recalls from this device will be kept.'
-              : 'An account keeps your scans and alerts across devices.'}
-        </p>
       </form>
     </AuthLayout>
   )

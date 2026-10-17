@@ -14,6 +14,8 @@ const buttonVariants = cva(
         destructive: 'border-[1.5px] border-destructive bg-destructive text-[13px] uppercase tracking-[.04em] text-destructive-foreground hover:bg-destructive/90',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
+        /** Third-party sign-in (Google): a plain light button, as the provider's branding guidelines ask */
+        social: 'border border-[#747775] bg-white text-[14px] font-medium text-[#1f1f1f] hover:bg-[#f2f2f2]',
       },
       size: {
         default: 'h-12 w-full px-4',

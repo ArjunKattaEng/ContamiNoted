@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { FileQuestion, Package } from 'lucide-react'
+import { FileQuestion, Package, Search } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -48,7 +48,7 @@ function ScanQueryState({ query, type }: { query: UseQueryResult<Scan>; type: Sc
           </Button>
         }
       >
-        It may have been deleted, or it belongs to another account.
+        It may have been deleted, or it was made on another device.
       </EmptyState>
     )
   }
@@ -189,7 +189,11 @@ export function ReceiptResult() {
   )
 }
 
+const searchRecallsPath = (q: string | undefined) =>
+  q && q !== 'Unknown product' ? `/recalls?q=${encodeURIComponent(q)}` : '/recalls'
+
 export function BarcodeResult() {
+  const navigate = useNavigate()
   const { scanId } = useParams()
   const query = useScan(scanId)
   const header = <ScreenHeader title="Product check" backOnDesktop />
@@ -221,13 +225,23 @@ export function BarcodeResult() {
           {(product?.brand || product?.size) && (
             <p className="text-sm text-muted-foreground">{[product.brand, product.size].filter(Boolean).join(' · ')}</p>
           )}
-          {product?.upc && <p className="mt-1 font-mono text-xs text-muted-foreground">UPC {formatUpc(product.upc)}</p>}
+          {product?.upc && (
+            <p className="mt-1 font-mono text-xs text-muted-foreground">
+              {product.upc.length === 12 ? `UPC ${formatUpc(product.upc)}` : `Barcode ${product.upc}`}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">Scanned {formatTimestampDate(scan.createdAt)}</p>
         </div>
         <StatusIcon status={item.status} />
       </section>
       {item.note && <p className="text-sm">{item.note}</p>}
       <VerdictCard verdict={scan.verdict} counts={scan.counts} />
+      {item.status === 'clear' && (
+        // A search by brand or name can find a recall that doesn't print this barcode
+        <Button variant="secondary" onClick={() => navigate(searchRecallsPath(product?.brand ?? product?.name))}>
+          <Search /> Search recalls by name
+        </Button>
+      )}
     </>
   )
 

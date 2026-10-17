@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { useAuthSync } from '@/hooks/use-auth'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { AppShell } from '@/components/AppShell'
@@ -24,8 +25,10 @@ const Recalls = lazy(() => import('@/screens/Recalls').then((m) => ({ default: m
 const RecallDetail = lazy(() => import('@/screens/Recalls').then((m) => ({ default: m.RecallDetail })))
 const Alerts = lazy(() => import('@/screens/Alerts').then((m) => ({ default: m.Alerts })))
 const Profile = lazy(() => import('@/screens/Profile').then((m) => ({ default: m.Profile })))
+const Privacy = lazy(() => import('@/screens/Privacy').then((m) => ({ default: m.Privacy })))
 
 export default function App() {
+  useAuthSync()
   return (
     // Phones/tablets: full-screen pages with a bottom tab bar. Desktop: sidebar layout (see AppShell).
     <div className="app-shell relative flex w-full flex-col overflow-hidden bg-background">
@@ -59,7 +62,7 @@ export default function App() {
                 <Route
                   path="/receipts"
                   element={
-                    <FeatureGate on={features.history} feature="receipts">
+                    <FeatureGate on={features.history && features.receiptScan} feature="receipts">
                       <ReceiptHistory />
                     </FeatureGate>
                   }
@@ -85,6 +88,7 @@ export default function App() {
                 }
               />
               <Route path="/recalls/:recallNumber" element={<RecallDetail />} />
+              <Route path="/privacy" element={<Privacy />} />
               <Route
                 path="/scan/receipt/:scanId"
                 element={

@@ -12,7 +12,8 @@ export function overallStatus(scan: Pick<Scan, 'counts'>): MatchStatus {
   return 'clear'
 }
 
-const statusRank: Record<MatchStatus, number> = { confirmed: 0, possible: 1, error: 2, clear: 3 }
+/** Most serious first: confirmed > possible > error > clear. */
+export const statusRank: Record<MatchStatus, number> = { confirmed: 0, possible: 1, error: 2, clear: 3 }
 
 /** Sort flagged items first, keeping the receipt order within each status. */
 export function byAttention<T extends { status: MatchStatus }>(items: T[]): T[] {
@@ -24,6 +25,10 @@ export function byAttention<T extends { status: MatchStatus }>(items: T[]): T[] 
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 export const formatPrice = (amount: number) => usd.format(amount)
+
+/** "Brand Name", without repeating a brand the name already starts with. */
+export const productTitle = ({ brand, name }: { brand?: string; name: string }) =>
+  brand && !name.toLowerCase().startsWith(brand.toLowerCase()) ? `${brand} ${name}` : name
 
 /** Where a watched item came from: "Scanned product" or "Receipt · Valley Foods #0412". */
 export function itemOrigin({ source, store }: { source: ScanType; store?: string }): string {

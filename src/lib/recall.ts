@@ -1,11 +1,14 @@
 import type { RecallRef } from '@/types'
 
 /** Compact recall snapshot stored with alerts and saved recalls (strips any extra fields). */
+/** Longest product description kept in a snapshot (saved recalls, alerts); the full recall is a tap away. */
+export const MAX_SNAPSHOT_DESCRIPTION = 1000
+
 export function toRecallRef(recall: RecallRef): RecallRef {
   const { recallNumber, productDescription, classification, status, reportDate, terminationDate } = recall
   return {
     recallNumber,
-    productDescription,
+    productDescription: productDescription.slice(0, MAX_SNAPSHOT_DESCRIPTION),
     classification,
     status,
     reportDate,

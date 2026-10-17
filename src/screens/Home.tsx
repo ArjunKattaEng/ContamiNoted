@@ -10,6 +10,7 @@ import { Screen, SectionTitle } from '@/components/Screen'
 import { ErrorState } from '@/components/StateViews'
 import { TopBar } from '@/components/TopBar'
 import { useActiveAlerts } from '@/hooks/use-alerts'
+import { useProducts } from '@/hooks/use-products'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { useRecentRecalls } from '@/hooks/use-recalls'
 import { useSavedRecalls } from '@/hooks/use-saved'
@@ -111,13 +112,17 @@ export default function Home() {
   useDocumentTitle()
   const navigate = useNavigate()
   const alerts = useActiveAlerts()
+  const products = useProducts().data ?? []
+  // The green all-clear needs scanned products and none flagged (a dismissed alert's product keeps its scan status)
+  const showBanner =
+    (alerts.data?.length ?? 0) > 0 || (products.length > 0 && products.every((p) => p.status === 'clear' || p.status === 'error'))
   const actions = quickActions.filter((a) => a.show)
 
   return (
     <Screen className="pt-safe-top desktop:pt-8">
       <TopBar />
       <h1 className="mb-4 hidden text-2xl font-bold desktop:block">Home</h1>
-      {features.alerts && alerts.data && <AlertBanner count={alerts.data.length} />}
+      {features.alerts && alerts.data && showBanner && <AlertBanner count={alerts.data.length} />}
 
       {canScan ? (
         <>
@@ -148,7 +153,7 @@ export default function Home() {
           <LatestRecalls />
         </section>
 
-        {features.history ? (
+        {features.history && features.receiptScan ? (
           <section>
             <SectionTitle className="flex items-baseline justify-between">
               Recent Receipts

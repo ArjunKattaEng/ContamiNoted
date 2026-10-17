@@ -7,7 +7,7 @@ See `docs/implementation-plan.md` for the overall plan.
 ## Conventions
 
 - **Base URL:** relative `/api` on the web (Vite proxy in dev, Vercel rewrite in prod). On iOS it is the absolute `VITE_API_BASE_URL`, built by `apiUrl()` in `src/lib/api.ts`.
-- **Auth:** every endpoint except `/api/health`, the public recall reads (`/api/recalls/*`) and `/api/cron/*` requires `Authorization: Bearer <Firebase ID token>`. Anonymous (guest) tokens are accepted.
+- **Auth:** every endpoint except `/api/health`, the public recall reads (`/api/recalls/*`), the guest-mode barcode check (`POST /api/scan/barcode`) and `/api/cron/*` requires `Authorization: Bearer <Firebase ID token>`. Anonymous (guest) tokens are accepted.
   - Recall reads carry no user data and must not need auth: an `Authorization` header would stop Vercel's CDN from caching them.
 - **JSON:** request and response bodies use camelCase. The backend translates openFDA's snake_case.
 - **Dates:** ISO 8601 strings. Calendar dates are `YYYY-MM-DD`, timestamps are full ISO. openFDA's `YYYYMMDD` is normalized on the server.
@@ -34,6 +34,11 @@ See `docs/implementation-plan.md` for the overall plan.
 ## Types
 
 ```ts
+// Guest-mode re-check: POST /api/watchlist/check
+interface WatchCheckItem { id: string; upc?: string; name: string; brand?: string }
+interface WatchCheckMatch { itemId: string; recallNumber: string; confidence: 'confirmed' | 'possible'; recall: RecallRef }
+interface WatchCheckResult { checkedAt: string; since: string; matches: WatchCheckMatch[] }
+
 type RecallStatus = 'Ongoing' | 'Completed' | 'Terminated'   // UI: Active = Ongoing; Resolved = Completed | Terminated
 type Classification = 'Class I' | 'Class II' | 'Class III'
 type MatchStatus = 'confirmed' | 'possible' | 'clear' | 'error'
@@ -96,7 +101,7 @@ interface ScanItem {
   price?: number
   status: MatchStatus
   recallNumbers: string[]         // empty unless confirmed/possible
-  note?: string                   // short LLM explanation for this item
+  note?: string                   // short explanation for this item (templated for barcode scans)
 }
 
 interface Scan {
@@ -174,7 +179,7 @@ interface Page<T> { items: T[]; page: number; pageSize: number; total: number; h
 
 ## HTTP endpoints
 
-Implemented so far (`api/`): `GET /api/health`, the five `/api/recalls/*` endpoints and `GET /api/meta/data-source` (without `lastWatchCheckAt` until accounts exist). The rest are placeholders.
+Implemented so far (`api/`): `GET /api/health`, the five `/api/recalls/*` endpoints, `GET /api/meta/data-source` (without `lastWatchCheckAt` until accounts exist) and `POST /api/scan/barcode` (guest mode). The rest are placeholders.
 
 ### `GET /api/health`
 No auth. Response: `{ "status": "ok" }`.
@@ -229,13 +234,29 @@ Response `RecallSummary` with all `sections`, or `null` when summaries are unava
 Service method: `recalls.summary(recallNumber)`.
 
 ### `POST /api/scan/barcode`
+**Live (guest mode).** No auth, and nothing is stored on the server: the app saves the returned `Scan` on the device (`src/services/local/scans.ts`), and `scan.getScan(id)` reads it from there. `Cache-Control: no-store`.
+
 Request:
 ```json
 { "code": "012345678905" }
 ```
-The server strips non-digits, validates the GTIN check digit (400 `invalid_barcode`), converts EAN-13 with a leading 0 to UPC-A, looks up the product (Open Food Facts), searches openFDA, matches, writes the verdict, and saves the scan plus a watchlist item for the user.
+1. Strip non-digits and normalize: UPC-E (8 digits starting with 0/1) is expanded to UPC-A, and EAN-13 / GTIN-14 codes with leading zeros are shortened to UPC-A. An invalid check digit or length is 400 `invalid_barcode`.
+2. In parallel: look the product up in Open Food Facts (name, brand, size, image), and search openFDA for recalls that print the barcode (`product_description`, `code_info`, `more_code_info`, in the groupings recalls use: `040264101280`, `0 40264 10128`, `040264 10128`, `40264 10128`, `040264 101280`, the EAN-13 form, the form without the leading zero, and the UPC-E form when there is one). Open Food Facts being down doesn't fail the scan: only the barcode is checked, and the verdict says so.
+3. If the product has a brand and a name of its own, also search openFDA for recalls that mention every brand word (each word as printed, without accents, without apostrophes and without a possessive "'s"; up to 300, newest first, and the verdict says when a brand had more). If that search fails after a confirmed match, the confirmed result is returned; otherwise 502. Accents are folded for matching ("Nestlé" = "Nestle").
+4. Match each candidate locally (`api/services/matching.py`):
+   - `confirmed`: the barcode is printed in the recall. Grouping with spaces or dashes and extra leading zeros (EAN-13/GTIN-14) count anywhere in a printed number. Shorter forms (dropped leading zero, UPC-E, no check digit) count only as a whole printed number grouped like a barcode, so lot codes and dates can't match.
+   - `possible`: every brand word appears in the recall's description or firm, and the product name's words appear in the description (all of them for 1–2 word names, at least half for longer ones). Needs both a brand and a name beyond the brand. A recall that lists other UPCs can still be `possible` (the verdict then asks the user to compare barcodes).
+   - otherwise `clear`.
+5. Candidates are recalls still `Ongoing`, or reported in the last 2 years.
+6. The verdict is written from templates (no AI), so it is never `null` here.
 
-Response `Scan` (`type: "barcode"`, one item). Like the receipt endpoint, it also writes a `WatchItem` per readable item and an `Alert` for each confirmed/possible match. An unknown product still returns 200, with `product.name: "Unknown product"` and status `clear` unless the UPC itself appears in a recall.
+Response `Scan` (`type: "barcode"`, one item). `matchedRecalls` holds only the recalls behind the item's status (confirmed ones when there are any), with a cached `summary.shortSummary` when available.
+- An unknown product (not in Open Food Facts, or Open Food Facts down) still returns 200, with `product.name: "Unknown product"`. Only the barcode is checked, and the verdict says so.
+- If openFDA fails: 502 `upstream_error`. The endpoint never answers "no recall found" without having checked.
+- Complete results are cached per barcode for 15 minutes in the serverless instance; every response gets a new scan id.
+- Text from Open Food Facts is markdown-escaped in the verdict.
+
+Once accounts exist, it will also save the scan, a `WatchItem` and `Alert`s for the user.
 
 Service method: `scan.scanBarcode(code)`.
 
@@ -263,7 +284,28 @@ Corrects an item's name (typically an unreadable `error` receipt line, 2–100 c
 
 Response `Scan`. Returns 404 for an unknown scan or item. Service method: `scan.updateItem(scanId, itemId, name)`.
 
-### `POST /api/watchlist/check`
+### `POST /api/watchlist/check` (guest mode, live)
+**Live.** No auth, nothing stored. The app sends the products it keeps on the device; the backend matches them against recalls reported since `since` and returns the matches. The app turns them into alerts on the device (`src/services/local/watch.ts`). `Cache-Control: no-store`.
+
+Request:
+```json
+{ "items": [{ "id": "barcode-012345678905", "upc": "012345678905", "name": "Raspberry Yogurt Parfait", "brand": "Bonya" }], "since": "2026-10-10" }
+```
+- `items`: up to 100; `id` (1–100 chars) and `name` (1–200 chars) required. An invalid `upc` is ignored (the item is matched by brand + name only).
+- `since`: the device's last check (or its oldest scan). The backend checks recalls reported from `since − 14 days` (openFDA publishes records days after their report date), at most 90 days back (the endpoint needs no login; each scan already checks the full 2 years) and never after today. Omitted: the last 30 days.
+- Recalls are fetched per calendar month in parallel (paged within a month only if it holds over 1,000; over 25,000 is a 502) and cached per month in the serverless instance, shared by every device: past months for 6 hours, the current month for 10 minutes. Recalls before the window's first day are filtered out, and the rest are matched with the same rules as a barcode scan. Each recall's words and printed numbers are worked out once per window, so 100 products × a few thousand recalls stays well under a second of matching.
+
+Response `WatchCheckResult`:
+```json
+{ "checkedAt": "2026-10-16T12:00:00Z", "since": "2026-09-26",
+  "matches": [{ "itemId": "barcode-012345678905", "recallNumber": "F-0769-2025", "confidence": "possible",
+                "recall": { "recallNumber": "F-0769-2025", "productDescription": "…", "classification": "Class II", "status": "Ongoing", "reportDate": "2025-05-21" } }] }
+```
+On the device, an alert's id is `${recallNumber}_${itemId}`: a known alert is not added again (a dismissed one stays dismissed), and `possible` is upgraded to `confirmed` when a later check confirms it. openFDA failing is a 502, and the device keeps its last check time.
+
+Service method: `alerts.recheck()` (returns `RecheckResult` built on the device).
+
+### `POST /api/watchlist/check` (with accounts, planned)
 Called on app open and resume when `prefs.recheckOnOpen` is true. The server matches the user's saved items against recalls reported since `lastWatchCheckAt`, writes new alerts, and updates `lastWatchCheckAt`. It skips the check if the last one was under 6 hours ago.
 
 Request: empty body. Response `RecheckResult`:
@@ -284,26 +326,36 @@ A daily Vercel Cron job calls this with `Authorization: Bearer ${CRON_SECRET}`. 
 
 ## Firestore-backed operations (client SDK, no HTTP endpoint)
 
+**Built, behind `features.accounts` (off in production).** Signed in, the app reads and writes these with the Firestore Lite client SDK (`src/services/firebase/data.ts`); signed out, the same services use the device (`src/services/local/`). `firestore.rules` allows each user only their own `users/{uid}` tree and checks every field. The backend stays stateless: re-checks still go through `POST /api/watchlist/check`, with the products read from the account.
+
 | Service method | Firestore | Notes |
 |---|---|---|
-| `history.listScans(type)` | `users/{uid}/scans` where `type == ?` order by `createdAt desc` | Server-written; client read-only |
-| `history.listProducts()` | `users/{uid}/items` order by `createdAt desc` | Watchlist of scanned products |
-| `history.deleteProduct(id)` | delete `users/{uid}/items/{id}` and its alerts | Client may delete own; an unwatched item shouldn't keep raising alerts |
-| `alerts.list()` | `users/{uid}/alerts` order by `createdAt desc` | Server-written |
-| `alerts.dismiss(id)` | update `users/{uid}/alerts/{id}` `{ dismissed: true }` | Rules allow only the `dismissed` field |
-| `saved.list()` / `saved.toggle(recallRef)` | `users/{uid}/savedRecalls/{recallNumber}` | `SavedRecall`; `toggle` resolves to the new saved state |
-| `auth.updatePrefs(prefs)` | update `users/{uid}` `{ prefs }` | Client may update `displayName`, `prefs` |
-| summary cache | `recallSummaries/{recallNumber}` | Server-written; any signed-in user may read |
+| `history.listScans(type)` | `users/{uid}/scans` order by `createdAt desc` (newest 200) | One document per product, id `barcode-<upc>` (`productKey`); a rescan replaces it and keeps the old scan ids in `previousIds` |
+| `history.listProducts()` | the same scans, as products (`productsFromScans`), raised by active alerts | |
+| `history.deleteProduct(id)` | delete `users/{uid}/scans/{id}` and its alerts | |
+| `scan.getScan(id)` | `scans` where `id == ?`, else where `previousIds array-contains ?` | |
+| `alerts.list()` | `users/{uid}/alerts` order by `createdAt desc` | Id `<recallNumber>_<itemId>` |
+| `alerts.dismiss(id)` | update `{ dismissed: true }` | Updates may change only `dismissed`, `confidence`, `recall`, `itemName` |
+| `alerts.recheck()` / `lastCheck()` | products from `scans`, `lastWatchCheckAt` in `users/{uid}` | Batches of 100 products per request |
+| `saved.list()` / `saved.toggle(recallRef)` | `users/{uid}/savedRecalls/{recallNumber}` | |
+| `auth.updatePrefs(prefs, uid)` | merge `users/{uid}` `{ prefs, updatedAt }` | |
+| summary cache (planned) | `recallSummaries/{recallNumber}` | Server-written |
+
+On every sign-in (and app start while signed in) the device's guest data is merged into the account (`planDeviceMerge` in `src/services/user-data.ts`) and then removed from the device.
 
 ## Auth service → Firebase Auth
 
+Built in `src/services/firebase/auth.ts` (email/password and Google; no anonymous users: signed out is the guest on the device).
+
 | Service method | Implementation |
 |---|---|
-| `auth.current()` | `onAuthStateChanged` and the `users/{uid}` profile |
-| `auth.continueAsGuest()` | `signInAnonymously` (automatic on first launch) |
+| `auth.current()` | `authStateReady`, then the `users/{uid}` profile (created on first sign-in) and the device merge |
+| `auth.continueAsGuest()` | `signOut` if signed in |
 | `auth.signIn(email, password)` | `signInWithEmailAndPassword` |
-| `auth.signUp({ name, email, password })` | `linkWithCredential(EmailAuthProvider.credential(...))` when the user is a guest, so the uid and history are kept; otherwise `createUserWithEmailAndPassword` |
-| `auth.signInWithApple()` / `auth.signInWithGoogle()` | `@capacitor-firebase/authentication` on iOS, popup on web, then link to the anonymous account |
-| `auth.resetPassword(email)` | `sendPasswordResetEmail` |
-| `auth.signOut()` | `signOut`, then a new anonymous session |
-| `auth.deleteAccount()` | `DELETE /api/account` |
+| `auth.signUp({ name, email, password })` | `createUserWithEmailAndPassword`, `updateProfile`, `sendEmailVerification` |
+| `auth.signInWithGoogle()` | `signInWithPopup` on the web; not available in the iOS app yet (needs `@capacitor-firebase/authentication`) |
+| `auth.signInWithApple()` | Not built (throws `NotImplementedError`); needed alongside Google in the iOS app |
+| `auth.resetPassword(email)` | `sendPasswordResetEmail` (no account enumeration) |
+| `auth.signOut()` | `signOut` |
+| `auth.deleteAccount({ uid, password? })` | Re-authenticates (password, or a Google popup), deletes the subcollections, the profile and the Firebase user, all from the client. `DELETE /api/account` isn't needed |
+| `auth.onChange(listener)` | `onAuthStateChanged` (also follows other tabs) |

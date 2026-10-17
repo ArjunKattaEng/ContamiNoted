@@ -10,13 +10,17 @@
     "setup:api": "python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint .",
     "test": "vitest run",
     "test:api": ".venv/bin/python -m pytest api/tests -q",
     "ios": "vite build && cap sync ios && cap open ios",
     "ios:sync": "vite build && cap sync ios",
-    "ios:run": "vite build && cap sync ios && cap run ios"
+    "ios:run": "vite build && cap sync ios && cap run ios",
+    "emulators": "node -e \"require('fs').mkdirSync('.emulator-data',{recursive:true})\" && npx --yes firebase-tools@15 emulators:start --project demo-recallguard --import .emulator-data --export-on-exit",
+    "test:auth": "npx --yes firebase-tools@15 emulators:exec --only auth --project demo-recallguard \"vitest run --config vitest.firebase.config.ts tests/firebase/auth-emulator.test.ts\"",
+    "test:rules": "npx --yes firebase-tools@15 emulators:exec --only firestore --project demo-recallguard \"vitest run --config vitest.firebase.config.ts tests/firebase/rules.test.ts\"",
+    "test:firebase": "npx --yes firebase-tools@15 emulators:exec --only auth,firestore --project demo-recallguard \"vitest run --config vitest.firebase.config.ts\""
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",
@@ -35,6 +39,7 @@
     "@tanstack/react-query": "^5.104.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^13.0.0",
     "lucide-react": "^0.462.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -50,6 +55,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^9.39.5",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",

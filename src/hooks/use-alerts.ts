@@ -34,7 +34,10 @@ export function useDismissAlert() {
       return { previous }
     },
     onError: (_err, _id, context) => queryClient.setQueryData(queryKeys.alerts, context?.previous),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.alerts }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.alerts })
+      queryClient.invalidateQueries({ queryKey: queryKeys.products }) // product status follows active alerts
+    },
   })
 }
 
@@ -45,11 +48,24 @@ export function useRecheck() {
     mutationFn: () => services.alerts.recheck(),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dataSource })
+      queryClient.invalidateQueries({ queryKey: queryKeys.lastWatchCheck })
       if (result.newAlerts.length === 0) return
       queryClient.invalidateQueries({ queryKey: queryKeys.alerts })
       queryClient.invalidateQueries({ queryKey: queryKeys.products })
       // A re-check can surface recalls that weren't in the lists before
       queryClient.invalidateQueries({ queryKey: queryKeys.recalls.all })
     },
+  })
+}
+
+/**
+ * When saved items were last re-checked (ISO timestamp, or null): this device's for a guest, the account's
+ * when signed in. Read on its own, so it shows even when the openFDA status request fails.
+ */
+export function useLastWatchCheck() {
+  return useQuery({
+    queryKey: queryKeys.lastWatchCheck,
+    queryFn: () => services.alerts.lastCheck(),
+    enabled: features.alerts,
   })
 }

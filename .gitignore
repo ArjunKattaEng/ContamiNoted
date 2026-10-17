@@ -20,3 +20,8 @@ __pycache__/
 .vercel
 .DS_Store
 *.log
+
+# Firebase emulators (npm run emulators keeps local test data here)
+.emulator-data/
+.firebase/
+.env*

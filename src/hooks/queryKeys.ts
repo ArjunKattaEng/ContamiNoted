@@ -20,7 +20,17 @@ export const queryKeys = {
   alerts: ['alerts'] as const,
   saved: ['saved'] as const,
   dataSource: ['meta', 'dataSource'] as const,
+  devicePrefs: ['prefs', 'device'] as const,
+  lastWatchCheck: ['watch', 'lastCheck'] as const,
 }
 
 /** Queries whose data belongs to the signed-in user; reset whenever the account changes. */
-export const userScopedKeys = [queryKeys.scans.all, queryKeys.products, queryKeys.alerts, queryKeys.saved, queryKeys.dataSource]
+export const userScopedKeys = [
+  queryKeys.scans.all,
+  queryKeys.products,
+  queryKeys.alerts,
+  queryKeys.saved,
+  queryKeys.dataSource,
+  queryKeys.devicePrefs,
+  queryKeys.lastWatchCheck,
+]

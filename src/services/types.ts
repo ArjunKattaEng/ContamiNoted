@@ -62,6 +62,8 @@ export interface AlertsService {
   dismiss(id: string): Promise<void>
   /** Match saved items against recalls reported since the last check. */
   recheck(): Promise<RecheckResult>
+  /** When saved items were last re-checked (ISO timestamp), or null if never. */
+  lastCheck(): Promise<string | null>
 }
 
 export interface SavedService {
@@ -77,20 +79,30 @@ export interface SignUpInput {
 }
 
 export interface AuthService {
-  /** Current user; starts a guest session if there is none. */
+  /** The signed-in user, or the guest on this device when signed out (never rejects for a guest). */
   current(): Promise<UserProfile>
+  /** Signs out if needed; returns the guest on this device. */
   continueAsGuest(): Promise<UserProfile>
+  /** Signing in or up merges this device's guest data (scans, saved recalls, alerts) into the account. */
   signIn(email: string, password: string): Promise<UserProfile>
-  /** Upgrades a guest in place, so their history is kept. */
   signUp(input: SignUpInput): Promise<UserProfile>
   signInWithApple(): Promise<UserProfile>
   signInWithGoogle(): Promise<UserProfile>
+  /** Resolves whether or not the email has an account (no account enumeration). */
   resetPassword(email: string): Promise<void>
-  updatePrefs(prefs: Partial<UserPrefs>): Promise<UserProfile>
-  /** Signs out and starts a fresh guest session. */
+  /** `uid` is the user the screen shows; the call fails if someone else is signed in now (another tab). */
+  updatePrefs(prefs: Partial<UserPrefs>, uid: string): Promise<UserProfile>
+  /** Signs out; returns the guest on this device. */
   signOut(): Promise<UserProfile>
-  /** Deletes the account and its data, then starts a fresh guest session. */
-  deleteAccount(): Promise<UserProfile>
+  /**
+   * Deletes the account and its data (or, for a guest, the data on this device). Firebase needs a recent
+   * sign-in: password users pass their password, Google users confirm in a popup. Throws ApiError
+   * `requires_recent_login` when neither is possible. `uid` is the user the screen shows: the call fails
+   * if someone else is signed in now (another tab), so it never deletes an account the screen didn't show.
+   */
+  deleteAccount(confirm: { uid: string; password?: string }): Promise<UserProfile>
+  /** Calls `listener` with the uid (GUEST_UID when signed out) whenever sign-in changes, also in other tabs. */
+  onChange(listener: (uid: string) => void): () => void
 }
 
 export interface MetaService {

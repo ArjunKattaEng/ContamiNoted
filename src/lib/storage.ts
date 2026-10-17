@@ -9,11 +9,30 @@ export function readJson<T>(key: string): T | null {
   }
 }
 
-export function writeJson(key: string, value: unknown): void {
+/** Returns whether the value was stored (false when storage is full or unavailable). */
+export function writeJson(key: string, value: unknown): boolean {
   try {
-    globalThis.localStorage?.setItem(key, JSON.stringify(value))
+    if (!globalThis.localStorage) return false
+    globalThis.localStorage.setItem(key, JSON.stringify(value))
+    return true
   } catch {
     // Storage full or unavailable: callers keep working from memory for this session.
+    return false
+  }
+}
+
+/**
+ * Whether there is a localStorage at all (false in tests without a DOM, or when blocked and access throws).
+ * A full quota still counts as available: no write is attempted here.
+ */
+export function storageAvailable(): boolean {
+  try {
+    const storage = globalThis.localStorage
+    if (!storage) return false
+    storage.getItem('rg-onboarded-v1')
+    return true
+  } catch {
+    return false
   }
 }
 

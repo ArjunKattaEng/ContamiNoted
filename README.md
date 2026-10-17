@@ -2,8 +2,9 @@
 
 Checks your groceries against FDA food recalls, on the web (phone, tablet and desktop) and as an iOS app (Capacitor).
 
-- **Live:** recalls from openFDA, with plain-language Gemini summaries.
-- **Coming soon:** barcode and receipt scanning, purchase history, alerts and accounts. Their screens are built and switched on in `src/lib/features.ts` as each backend lands.
+- **Live:** recalls from openFDA, with plain-language Gemini summaries, and barcode scanning (guest mode: product lookup via Open Food Facts, matched against openFDA; scan history stays on the device).
+- **Live:** recall alerts for scanned products (re-checked when the app opens; kept on the device).
+- **Coming soon:** receipt scanning and accounts. Their screens are built and switched on in `src/lib/features.ts` as each backend lands.
 
 Production: https://contami-noted.vercel.app
 

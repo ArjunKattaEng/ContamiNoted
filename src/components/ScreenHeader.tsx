@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { useGoBack } from '@/hooks/use-go-back'
 import { cn } from '@/lib/utils'
 import { pageColumn } from './Screen'
 
@@ -16,11 +17,14 @@ interface ScreenHeaderProps {
    * don't need one; detail pages (recall, scan result, settings) do.
    */
   backOnDesktop?: boolean
+  /** Where Back goes when there's no in-app history (the page was opened from a link). Default: browser back. */
+  backTo?: string
 }
 
 /** Phone/tablet: centered title bar with a back button. Desktop: large left-aligned page title. */
-export function ScreenHeader({ title, right, back = true, backOnDesktop = false }: ScreenHeaderProps) {
+export function ScreenHeader({ title, right, back = true, backOnDesktop = false, backTo }: ScreenHeaderProps) {
   const navigate = useNavigate()
+  const goBack = useGoBack(backTo ?? '/home')
   useDocumentTitle(title)
   return (
     <header className="flex-none border-b bg-card pb-3 pt-[calc(12px+var(--safe-top))] desktop:border-b-0 desktop:bg-transparent desktop:pb-0 desktop:pt-8">
@@ -30,7 +34,7 @@ export function ScreenHeader({ title, right, back = true, backOnDesktop = false 
             variant="ghost"
             size="icon"
             aria-label="Back"
-            onClick={() => navigate(-1)}
+            onClick={() => (backTo ? goBack() : navigate(-1))}
             className={cn(backOnDesktop ? 'desktop:-ml-3' : 'desktop:hidden')}
           >
             <ChevronLeft className="!size-7" />

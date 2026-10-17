@@ -15,9 +15,10 @@ import { EmptyState, ErrorState } from '@/components/StateViews'
 import { useDeleteProduct, useProducts } from '@/hooks/use-products'
 import { useScanHistory } from '@/hooks/use-scans'
 import { formatUpc } from '@/lib/barcode'
+import { features } from '@/lib/features'
 import { formatDate, formatTimestampDate } from '@/lib/format'
 import { recallPath } from '@/lib/recall'
-import { overallStatus, scanPath } from '@/lib/scan'
+import { overallStatus, productTitle, scanPath } from '@/lib/scan'
 import type { Scan, WatchItem } from '@/types'
 
 /** Header action: icon on phones/tablets, labeled button on desktop. */
@@ -146,8 +147,14 @@ function ProductRow({ item }: { item: WatchItem }) {
   const remove = useDeleteProduct()
   const [confirming, setConfirming] = useState(false)
 
+  // Scanned products open their scan result (which lists the matching recalls); receipt items with a
+  // match go straight to the recall
   const open = () =>
-    navigate(item.recallNumbers.length > 0 ? recallPath(item.recallNumbers[0]) : scanPath({ type: item.source, id: item.scanId }))
+    navigate(
+      item.source === 'receipt' && item.recallNumbers.length > 0
+        ? recallPath(item.recallNumbers[0])
+        : scanPath({ type: item.source, id: item.scanId }),
+    )
 
   const detail =
     item.source === 'receipt'
@@ -158,7 +165,7 @@ function ProductRow({ item }: { item: WatchItem }) {
   return (
     <RowCard onClick={open}>
       <IconTile icon={item.source === 'barcode' ? ScanBarcode : Receipt} />
-      <RowMeta title={item.brand ? `${item.brand} ${item.name}` : item.name}>
+      <RowMeta title={productTitle(item)}>
         <span className="block truncate text-xs">{detail || `Added ${formatTimestampDate(item.createdAt)}`}</span>
       </RowMeta>
       <RowTrailing>
@@ -173,7 +180,8 @@ function ProductRow({ item }: { item: WatchItem }) {
               disabled={remove.isPending}
               onClick={() =>
                 remove.mutate(item.id, {
-                  onSuccess: () => toast('Removed. We’ll stop checking this item for recalls.'),
+                  onSuccess: () =>
+                    toast(features.alerts ? 'Removed. We’ll stop checking this item for recalls.' : 'Removed from this device.'),
                   onError: () => toast('Couldn’t remove this item'),
                 })
               }
@@ -221,7 +229,7 @@ export function ScannedProducts() {
             title="No scanned products yet"
             action={<Button size="sm" onClick={() => navigate('/scan?mode=product')}>Scan a product</Button>}
           >
-            Scan a product’s barcode to check it for recalls. We’ll keep watching it for new ones.
+            Scan a product’s barcode to check it for recalls.{features.alerts && ' We’ll keep watching it for new ones.'}
           </EmptyState>
         ) : (
           <EmptyState icon={Receipt} title="No items from receipts yet">
@@ -246,14 +254,18 @@ export function ScannedProducts() {
       <ScreenHeader title="Products" back={false} right={<ScanButton label="Scan product" to="/scan?mode=product" />} />
       <Screen>
         <SearchInput value={q} onChange={setQ} placeholder="Search by name, brand or UPC" />
-        <FilterTabs
-          value={source}
-          onChange={setSource}
-          options={[
-            ['barcode', 'Scanned'],
-            ['receipt', 'From receipts'],
-          ]}
-        />
+        {features.receiptScan ? (
+          <FilterTabs
+            value={source}
+            onChange={setSource}
+            options={[
+              ['barcode', 'Scanned'],
+              ['receipt', 'From receipts'],
+            ]}
+          />
+        ) : (
+          <div className="h-3" aria-hidden />
+        )}
         {body}
       </Screen>
     </>

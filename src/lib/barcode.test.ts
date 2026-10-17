@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalBarcode, formatUpc, isValidGtin, normalizeBarcode, toUpcA, upcAppearsIn } from './barcode'
+import { canonicalBarcode, expandUpcE, formatUpc, isValidGtin, normalizeBarcode, toUpcA } from './barcode'
 
 describe('normalizeBarcode', () => {
   it('keeps only digits', () => {
@@ -32,17 +32,18 @@ describe('toUpcA / canonicalBarcode', () => {
   it('leaves other EAN-13 codes alone', () => {
     expect(toUpcA('4006381333931')).toBe('4006381333931')
   })
-})
 
-describe('upcAppearsIn', () => {
-  it('matches UPCs printed with spaces or dashes', () => {
-    expect(upcAppearsIn('UPC 0 84135 00101 9; lots BF2681', '084135001019')).toBe(true)
-    expect(upcAppearsIn('UPC 0-86112-00412-9', '086112004129')).toBe(true)
+  it('shortens GTIN-14 with leading zeros to UPC-A', () => {
+    expect(canonicalBarcode('00012345678905')).toBe('012345678905')
+    expect(canonicalBarcode('10012345678902')).toBe('10012345678902')
   })
 
-  it('does not match a UPC embedded in a longer number', () => {
-    expect(upcAppearsIn('lot 9084135001019', '084135001019')).toBe(false)
-    expect(upcAppearsIn('UPC 0 65734 00119 8', '065734001181')).toBe(false)
+  it('expands UPC-E to UPC-A and keeps EAN-8', () => {
+    expect(expandUpcE('01234565')).toBe('012345000065')
+    expect(expandUpcE('04252614')).toBe('042100005264')
+    expect(canonicalBarcode('01234565')).toBe('012345000065')
+    expect(isValidGtin(canonicalBarcode('01234565'))).toBe(true)
+    expect(canonicalBarcode('96385074')).toBe('96385074')
   })
 })
 

@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "demo-recallguard",
+    "prod": "recallguard-2724"
+  }
+}

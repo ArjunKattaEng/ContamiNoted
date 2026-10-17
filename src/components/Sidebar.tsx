@@ -11,7 +11,7 @@ const navItems: { to: string; label: string; icon: LucideIcon; show: boolean }[]
   { to: '/home', label: 'Home', icon: House, show: true },
   { to: '/alerts', label: 'Alerts', icon: Bell, show: features.alerts },
   { to: '/recalls', label: 'Recalls', icon: ShieldAlert, show: true },
-  { to: '/receipts', label: 'Receipts', icon: Receipt, show: features.history },
+  { to: '/receipts', label: 'Receipts', icon: Receipt, show: features.history && features.receiptScan },
   { to: '/products', label: 'Products', icon: Package, show: features.history },
   { to: '/profile', label: 'Profile', icon: User, show: true },
 ]

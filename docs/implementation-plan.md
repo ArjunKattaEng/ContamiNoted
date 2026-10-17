@@ -20,9 +20,10 @@
 | Step | Status |
 |---|---|
 | 1. Recent recalls: FastAPI `api/` + openFDA + Gemini summaries (+ `/api/meta/data-source`) | Done (summaries need `GEMINI_API_KEY`; switched from OpenAI to Gemini at the user's request) |
-| 2. Barcode scan: Open Food Facts + openFDA matching | Next |
+| 2. Barcode scan: Open Food Facts + openFDA matching | Done in guest mode: stateless `POST /api/scan/barcode`, deterministic verdict, scan history on the device (`src/services/local/scans.ts`) |
 | 3. Receipt scan: Google Document AI + LLM normalization | Planned |
-| 4. Firebase Auth + Firestore (history, alerts, saved, summary cache), re-check endpoint | Planned |
+| 4a. Alerts in guest mode: stateless `POST /api/watchlist/check`, alerts and re-check on open kept on the device | Done |
+| 4. Firebase Auth + Firestore (history, alerts, saved), device → account merge, sign-in screens | Built behind `features.accounts` (off in production until tested on the emulators and a real Firebase project is set up). Summary cache in Firestore: planned |
 
 ## Context
 
