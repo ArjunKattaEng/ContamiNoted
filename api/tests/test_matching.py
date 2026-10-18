@@ -1,10 +1,24 @@
 import pytest
 
-from api.services.matching import brand_query_terms, brand_words, classify, name_words, words
+from api.services.matching import brand_query_terms, brand_words, classify, name_words, product_text, words
 
 
 def by_number(recalls, number):
     return next(r for r in recalls if r.recall_number == number)
+
+
+# Real openFDA text (H-0682-2026): the ingredient and allergen statements name foods the product isn't
+MADELEINES = (
+    "Kirkland Signature Traditional Madeleines 12 Count/net wt. 18oz., Item #2000012, UPC 000020000127. Plastic "
+    "clamshell container is packed with 9 pieces of Filled Heart Madeleines.  Distributed by Costco Wholesale Corp. "
+    "Seattle, WA.   Label of recalled package is read in part: TRADITIONAL MADELEINES***INGREDIENTS: WHEAT FLOUR "
+    "**EGGS, BUTTER (CREAM) ***ALLERGEN INFORMATION: CONTAINS WHEAT, EGG, MILK*** PRODUCED ON EQUIPMENT THAT ALSO "
+    "PROCESSES PEANUTS, TREE NUTS AND SESAME***."
+)
+
+
+def with_text(recall, description, firm=None):
+    return recall.model_copy(update={"product_description": description, "recalling_firm": firm or recall.recalling_firm})
 
 
 def check(recall, *, upc="012345678905", brand=None, name=None):
@@ -46,6 +60,20 @@ class TestWords:
         assert brand_query_terms(brand) == expected
         # Same words as local matching, so a searchable brand is never an empty query
         assert len(brand_query_terms(brand)) == len(brand_words(brand))
+
+    @pytest.mark.parametrize(
+        "description,expected",
+        [
+            (MADELEINES, MADELEINES[: MADELEINES.index("INGREDIENTS")]),
+            ("Junebar Chocolate Cherry Snack Bar; INGREDIENT: dates", "Junebar Chocolate Cherry Snack Bar; "),
+            ("Granola; Manufactured in a facility that processes peanuts", "Granola; Manufactured in a "),
+            ("Trail Mix. Contains: peanuts", "Trail Mix. "),
+            ("Pure Ground Ingredients-Organic Peppermint Leaf Powder", "Pure Ground Ingredients-Organic Peppermint Leaf Powder"),
+            (None, ""),
+        ],
+    )
+    def test_product_text_stops_at_ingredients_allergens_and_facilities(self, description, expected):
+        assert product_text(description) == expected
 
     def test_accents_are_folded_for_matching(self):
         assert words("Nestlé Häagen") == ["nestle", "haagen"]
@@ -89,3 +117,13 @@ class TestClassify:
         rice = by_number(recalls, "H-0076-2025")
         assert check(rice, brand="Nature Mills", name="Nature Mills") is None
         assert check(rice, brand="Nature Mills", name="Vallarai Rice Mix") == "possible"
+
+    def test_ingredients_and_allergen_warnings_are_not_the_product(self, recalls):
+        # Kirkland peanut butter matched this recall on "BUTTER (CREAM)" and "PROCESSES PEANUTS"
+        madeleines = with_text(recalls[0], MADELEINES, "Costco Wholesale Corporation")
+        assert check(madeleines, brand="Kirkland Signature", name="Organic Creamy Peanut Butter") is None
+        assert check(madeleines, brand="Kirkland Signature", name="Traditional Madeleines") == "possible"
+
+    def test_brand_only_in_the_firm_is_not_a_match(self, recalls):
+        # The firm (Knockroe Inc) can own many brands; the recalled product's brand is the one in its description
+        assert check(by_number(recalls, "F-0769-2025"), brand="Knockroe", name="Raspberry Yogurt Parfait") is None

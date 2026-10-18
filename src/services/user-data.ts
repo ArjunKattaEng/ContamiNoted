@@ -39,6 +39,7 @@ export function productsFromScans(scans: Scan[]): WatchItem[] {
       brand: item.brand,
       upc: item.upc,
       size: scan.product?.size,
+      imageUrl: scan.product?.imageUrl,
       createdAt: scan.createdAt,
       status: item.status,
       recallNumbers: item.recallNumbers,

@@ -36,7 +36,8 @@ export function Privacy() {
             When you check a product, and when the app re-checks your products for new recalls, their barcodes, names
             and brands are sent to our server. It looks them up with Open Food Facts and the FDA’s openFDA service. Our
             server doesn’t store them: it keeps a product’s result in memory for up to 15 minutes to answer repeat checks
-            faster, and barcodes can appear for a short time in its activity logs.
+            faster, and barcodes can appear for a short time in its activity logs. A product’s photo, when Open Food Facts
+            has one, loads straight from Open Food Facts, which sees your IP address as any website would.
           </p>
         </Part>
         {features.accounts && (

@@ -50,7 +50,8 @@ def within_days(search: str, days: int | None, today: date | None = None, field:
 
 # Fields a recall prints UPCs in
 UPC_FIELDS = ("product_description", "code_info", "more_code_info")
-BRAND_FIELDS = ("product_description", "recalling_firm")
+# Brands are matched in the description only, not the firm (a parent company recalls other brands' products)
+BRAND_FIELDS = ("product_description",)
 
 
 def _phrase(text: str) -> str:

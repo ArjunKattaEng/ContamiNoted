@@ -1,7 +1,10 @@
 """Deterministic recall matching for a scanned product (the AI never decides a match status).
 
 - confirmed: the product's barcode is printed in the recall (description or codes).
-- possible:  same brand, and the product name's words appear in the recall description. Needs both a
+- possible:  the brand and the product name's words appear where the recall names its product: the
+             description up to any ingredient list, allergen statement or shared-equipment warning, which
+             name other foods ("BUTTER (CREAM)", "PROCESSES PEANUTS" in a madeleines recall isn't peanut
+             butter). Not the recalling firm: a parent company recalls other brands' products. Needs both a
              brand and a name: either alone matches far too much ("whole milk", every recall of a brand).
              This includes recalls that list other UPCs: the printed form could differ from ours, and a
              missed recall is worse than a "check this" prompt.
@@ -32,6 +35,13 @@ BRAND_STOPWORDS = frozenset(
     "the and inc llc ltd co corp corporation company brand brands food foods group usa us of".split()
 )
 
+# Where a recall description moves on from the product to what's in it or made alongside it. "Ingredients"
+# inside a name ("Pure Ground Ingredients-Organic …") doesn't count.
+PRODUCT_TEXT_END = re.compile(
+    r"\b(?:ingredients?|allergens?)(?![-\w])|\bcontains\s*:|\bmay\s+contain\b|\b(?:equipment|facility|facilities)\b",
+    re.IGNORECASE,
+)
+
 
 def _singular(word: str) -> str:
     return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") else word
@@ -53,6 +63,15 @@ def words(text: str | None) -> list[str]:
 
 def brand_words(brand: str | None) -> list[str]:
     return list(dict.fromkeys(w for w in words(brand) if len(w) >= 2 and w not in BRAND_STOPWORDS))
+
+
+def product_text(description: str | None) -> str:
+    """The part of a recall description that names the product: everything before its ingredient list,
+    allergen statement or shared-equipment warning."""
+    if not description:
+        return ""
+    end = PRODUCT_TEXT_END.search(description)
+    return description[: end.start()] if end else description
 
 
 def name_words(name: str | None, brand_ws: list[str]) -> list[str]:
@@ -82,17 +101,14 @@ class PreparedRecall:
 
     recall: Recall
     numbers: PrintedNumbers
-    company_words: frozenset[str]  # description + recalling firm
-    description_words: frozenset[str]
+    product_words: frozenset[str]  # product_text() of the description
 
 
 def prepare(recall: Recall) -> PreparedRecall:
-    description = words(recall.product_description)
     return PreparedRecall(
         recall=recall,
         numbers=printed_numbers(recall.product_description) | printed_numbers(recall.code_info),
-        company_words=frozenset(description + words(recall.recalling_firm)),
-        description_words=frozenset(description),
+        product_words=frozenset(words(product_text(recall.product_description))),
     )
 
 
@@ -103,9 +119,9 @@ def classify(recall: Recall | PreparedRecall, *, upc: str | None, brand_ws: list
         return "confirmed"
     if not can_match_by_name(brand_ws, name_ws):
         return None
-    if not all(w in p.company_words for w in brand_ws):
+    if not all(w in p.product_words for w in brand_ws):
         return None
-    if not _name_matches(name_ws, p.description_words):
+    if not _name_matches(name_ws, p.product_words):
         return None
     return "possible"
 

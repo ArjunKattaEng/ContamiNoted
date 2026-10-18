@@ -3,16 +3,17 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
+/** A status as a colored dot and a label (Yuka style) rather than a filled pill. */
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-[3px] text-[10px] font-bold [&_svg]:size-3 [&_svg]:shrink-0',
+  "inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground/80 before:size-2.5 before:flex-none before:rounded-full before:content-[''] [&_svg]:size-3 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground',
-        alert: 'bg-destructive-soft text-destructive',
-        safe: 'bg-success-soft text-success',
-        warn: 'bg-warning-soft text-warning',
-        outline: 'border text-foreground',
+        default: 'before:bg-primary',
+        alert: 'before:bg-destructive',
+        safe: 'before:bg-success',
+        warn: 'before:bg-caution',
+        outline: 'text-muted-foreground before:bg-muted-foreground/40',
       },
     },
     defaultVariants: {

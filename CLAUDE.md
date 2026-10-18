@@ -14,7 +14,7 @@ RecallGuard matches a user's purchases (scanned receipts and product barcodes) a
 - **Coming soon:** receipt scan and receipt history (screens built, hidden behind `src/lib/features.ts`).
 - **Accounts (built, switched off for real users):** Firebase Auth (email/password, Google) and Firestore keep a signed-in user's saved recalls, scans and alerts, and a guest's device data moves into the account on sign-in. They only turn on with `VITE_ACCOUNTS=true` plus a Firebase config, and Vercel has neither. See "Accounts (Firebase)".
 - **No synthetic data:** the demo/mock layer was removed.
-- **Native:** the camera and barcode scanner are wired through Capacitor.
+- **Barcode scanning:** the web app reads barcodes from its own live camera view and from photos (ZXing-C++ as WebAssembly in a worker, or the browser's built-in `BarcodeDetector` where it exists). The iOS app opens the native scanner (Capacitor), and can read photos too.
 
 Stack: React 18, react-router-dom v6, Vite 5, TypeScript, Tailwind CSS 3 + shadcn/ui (Radix), lucide-react icons, sonner toasts. Capacitor 8 wraps the same build as the iOS app. The `@/` import alias maps to `src/`.
 
@@ -118,7 +118,7 @@ For a confirmed match, search the Recalls tab for "UPC", open an active recall t
 ### 6. Walk through the app
 
 1. **First launch.** `/` shows onboarding and ends on Home. To see onboarding again, clear the site's storage (the flag is `rg-onboarded-v1`).
-2. **Home.** Quick actions (Scan Product, Check Recalls), latest recalls (live) and your saved recalls.
+2. **Home.** Quick actions (Scan product, Check recalls), latest recalls (live) and your saved recalls.
 3. **Recalls** (tab on phones, sidebar on desktop):
    - Active, Resolved and Saved tabs, plus search by product, brand or hazard (e.g. "listeria cheese").
    - A time-window filter defaults to the **last 30 days**; the options are 7 days, 30 days, 90 days, a year and all time. It's kept in the URL as `?days=7|90|365|all`.
@@ -127,7 +127,7 @@ For a confirmed match, search the Recalls tab for "UPC", open an active recall t
    - Open a recall: the FDA record shows immediately, then the full summary. Find refund, Share and Save are available.
 4. **Saved recalls.** Star a recall: it is stored on this device (`rg-saved-recalls-v1`). Profile → Saved on this device shows the count and can clear them.
 5. **Profile.** Saved on this device (saved recalls, scanned products, and clearing each), Recall alerts (on/off, last checked, Check now), and Data & sources with openFDA's real last-updated date.
-6. **Scan a product.** Scan or type a barcode on `/scan`; the result opens at `/scan/barcode/:scanId` and the product joins **Products**. Scans are stored on this device (`rg-scans-v1`, one per barcode, newest 50); Profile → Saved on this device can clear them. Try a UPC from a live recall's text for a confirmed match.
+6. **Scan a product.** On `/scan`, hold a barcode up to the camera (it scans by itself once two frames agree, with a green outline where it was found), tap the shutter to read the current frame as a photo, tap **Photo** to take or pick a picture, or type the code. The camera needs HTTPS or localhost, so on a phone use the deployed app. the result opens at `/scan/barcode/:scanId` and the product joins **Products**. Scans are stored on this device (`rg-scans-v1`, one per barcode, newest 50); Profile → Saved on this device can clear them. Try a UPC from a live recall's text for a confirmed match.
 7. **Alerts.** A scan with a match creates an alert right away. When the app opens or comes back to the foreground (at most every 5 minutes), saved products are re-checked against recalls reported since the last check (at most 90 days back; the backend caches recalls per calendar month), and new matches raise a toast with "View". `/alerts` lists them (dismiss when handled); the bell, Home banner, Products badges and the recall page's "Your items" tab use them too. Profile → Recall alerts has the on/off preference (on by default) and "Check now". Stored on this device: `rg-alerts-v1`, `rg-watch-check-v1`, `rg-device-prefs-v1`.
 8. **Coming soon.** `/receipts` shows a "Coming soon" screen and is hidden from navigation.
 9. **Sign-up placeholder (accounts off).** Profile shows a guest card with Sign up / Log in. `/signup`, `/login` and `/forgot-password` show the real forms under a "Coming soon" notice. Validation works, but submitting (or Google) only shows a toast: nothing is created or stored. To try real accounts locally, see "Accounts (Firebase)". `/privacy` ("What we store") is linked from Profile and sign-up.
@@ -150,7 +150,7 @@ npm run ios:run      # build, sync and launch in a simulator/device (or `npm run
 ```
 
 - The native app has no Vite proxy, so live recalls need `VITE_API_BASE_URL` set before building.
-  - Simulator: `http://localhost:8000`, with `npm run dev:api` running.
+  - Simulator: `http://localhost:8000`, with `npm run dev:api` running. Put it in `.env.local` so every `npm run ios*` build gets it (the web app ignores it).
   - Physical device: the deployed HTTPS URL (iOS blocks plain HTTP to other hosts).
 - Without `VITE_API_BASE_URL`, live recalls show the error state on iOS.
 - `VITE_*` values are baked in at build time: re-run `npm run ios:sync` after changing them.
@@ -168,7 +168,9 @@ npm run ios:run      # build, sync and launch in a simulator/device (or `npm run
 | Changed a `VITE_*` value but nothing changed | Restart the dev server (web) or rebuild (`npm run ios:sync`) |
 | `npm run emulators` / `test:rules`: "Could not spawn `java -version`" | Install a Java JDK 11+ (e.g. `brew install openjdk@21` and follow its PATH note) |
 | Accounts don't appear locally | `VITE_ACCOUNTS=true` and `VITE_USE_FIREBASE_EMULATORS=true` in `.env.development.local`, the emulators running, and the dev server restarted |
-| Scan says "That doesn't look like a valid barcode" | The check digit or length is wrong (8, 12, 13 or 14 digits). Retype it; the scanner sometimes misreads |
+| Scan says "That doesn't look like a valid barcode" | The check digit or length is wrong (8, 12, 13 or 14 digits). Retype it |
+| The camera view doesn't start | Camera access is blocked for the site (allow it in the browser's site settings), another app holds the camera, or the page isn't on HTTPS/localhost (e.g. a phone opening `http://<laptop-ip>:5173`). Photo and Type code still work |
+| The camera sees the barcode but doesn't read it | Too blurry (phones can't focus closer than ~10 cm: move back until it's sharp, the bars only need ~2 px each) or too dark (use the flashlight button). Tap the shutter to read a still frame, or use Photo |
 | Scan shows "Unknown product" / "No recall lists this barcode" | Open Food Facts doesn't know the product, or was down (the verdict says which); only the barcode was checked. Search Recalls by brand or name |
 | Scan or re-check fails with "The FDA recall service isn't responding" | openFDA is down or rate-limited (set `OPENFDA_API_KEY`). By design the app never shows "no recall found" without checking |
 | A recall that prints the product's UPC isn't matched | Look at how the UPC is printed in `product_description` / `code_info` and add it as a case in `api/tests/test_barcode.py`; forms live in `_forms` in `api/services/barcode.py` |
@@ -186,7 +188,7 @@ FastAPI, deployed as a Vercel Python function: `vercel.json` rewrites `/api/(.*)
   - `POST /api/watchlist/check` (`api/routers/watchlist.py`, guest mode, stateless): `WatchlistChecker` in `api/services/watchlist.py` fetches recalls reported since the device's last check (minus 14 days of overlap, at most 90 days back, 30 by default), per calendar month in parallel, and matches every product with the same rules as a scan. Months are cached in-process and shared by all devices (past months 6 h, current month 10 min), which also keeps this login-free endpoint off the shared openFDA quota.
   - **Matching rules** (`api/services/matching.py`, `api/services/barcode.py`; documented in `docs/api-contract.md`):
     - `confirmed`: the barcode is printed in the recall. 12–14-digit forms (spaced or dashed, EAN-13/GTIN-14) may appear anywhere in a printed number. Shorter forms (dropped leading zero, no check digit, UPC-E) must be a whole, barcode-like number, and 8-digit ones (UPC-E, EAN-8) also need a label such as "UPC" before them, so lot codes and dates can't match.
-    - `possible`: every brand word is in the recall's description or firm and the name words are in the description (all for 1–2 words, half for longer). Needs a brand and a name of its own. Accents are folded and possessives handled for brand searches.
+    - `possible`: every brand word and the name words (all for 1–2 words, half for longer) are in the part of the description that names the product: before any ingredient list, allergen statement or shared-equipment warning (`product_text()`), so "PROCESSES PEANUTS" in a madeleines recall doesn't match peanut butter. The recalling firm doesn't count (a parent company recalls other brands). Needs a brand and a name of its own. Accents are folded and possessives handled for brand searches.
     - Never decided by the AI. `PreparedRecall` (`prepare()`) works out each recall's words and printed numbers once, so matching many products stays fast.
 
   Recall details: Lists and detail never wait for the AI: they return FDA data plus any cached summary.
@@ -230,6 +232,8 @@ Prefer CSS (`desktop:` classes). Branch in JS with `useIsDesktop()` only when th
   Unknown paths redirect to `/`. Use `recallPath()` from `src/lib/recall.ts` for recall links and `scanPath()` from `src/lib/scan.ts` for scan results (`/scan/receipt/:scanId`, `/scan/barcode/:scanId`).
 - Scan flow (`screens/Scan.tsx` → `screens/ScanResults.tsx`):
   - The camera screen captures a photo or barcode, or takes an upload or typed code. Receipt images go through `prepareReceiptImage` (≤1600px JPEG) before `useScanReceipt`.
+  - Barcodes on the web: `components/BarcodeCamera.tsx` shows the back camera (`hooks/use-camera.ts`: permissions, errors, torch, restart after the page is hidden) and reads what's on screen every ~60 ms at ≤1280 px. A code counts once two reads agree (`createReadConfirmer`), and the same code isn't sent again for 4 s. The shutter reads the current frame as a photo; **Photo** reads a picked or taken picture (`readPhoto`, ≤3000 px). The iOS app keeps the native scanner for the shutter.
+  - Reading (`src/lib/scanner/`): `index.ts` tries the built-in `BarcodeDetector` (Chrome on Android/macOS), then ZXing-C++ in `scanner.worker.ts` (the `.wasm` is bundled, not loaded from a CDN). `zxing.ts` has the reader options, `detections.ts` the rules: EAN-13/EAN-8/UPC-A/UPC-E only, correct check digit, canonical code (same as typed), the biggest barcode wins. Tests decode real ZXing-drawn barcodes in generated photo-like pictures (`test-scenes.ts`).
   - On success it navigates to the result page with `replace`, so Back skips the camera.
   - The camera screen only offers modes whose flag is on (`features.receiptScan` / `features.barcodeScan`).
 - `src/screens/*.tsx` group related screens per file and use named exports (except `Home.tsx`, which has a default export). The README has the full wireframe → route → file table.
@@ -238,7 +242,7 @@ Prefer CSS (`desktop:` classes). Branch in JS with `useIsDesktop()` only when th
   - `vite.config.ts` splits `react` and `markdown` vendor chunks. Check `dist/index.html` after builds: only the app entry and `react` should preload.
 - `ErrorBoundary` around the routes shows a Reload/Go home screen instead of a blank page.
 - `ScreenHeader` and `PageTitle` set the browser tab title via `useDocumentTitle`. Pages without either call it directly (Home, Scan, onboarding).
-- `src/components/ui/` holds the shadcn primitives (`button`, `badge`, `input`, `tabs`, `switch`, `sonner`, `card`, `label`, `separator`, `skeleton`, plus `native-select`). These are restyled to the wireframe look: the `Button` variants are `default`/`secondary`/`destructive`/`ghost`/`link`/`social` (third-party sign-in), and the `Badge` variants are `alert`/`safe`/`warn`/`outline`. Add new ones in shadcn style.
+- `src/components/ui/` holds the shadcn primitives (`button`, `badge`, `input`, `tabs`, `switch`, `sonner`, `card`, `label`, `separator`, `skeleton`, plus `native-select`). These are restyled after Yuka (green brand on white, sentence-case buttons, segmented tabs): the `Button` variants are `default`/`secondary`/`destructive`/`ghost`/`link`/`social` (third-party sign-in), and the `Badge` variants are `alert`/`safe`/`warn`/`outline`, drawn as a colored dot plus a label. Lists are hairline-divided `RowCard` rows (`variant="box"` for standalone boxes) in a `RowList`; the phone tab bar has a raised Scan button in the middle. Recalls have no photos, so rows and the recall page show a hazard icon (`HazardTile`) from `hazardOf()` in `src/lib/hazard.ts` (keyword rules on `reasonForRecall`, no AI; tested on real reasons), and the recall page lists "At a glance" fact rows. Add new ones in shadcn style.
 - `src/components/*.tsx` holds the app components:
   - layout: `Screen`/`SectionTitle`/`PageTitle`, `ScreenHeader`, `TopBar`, `BottomNav`, `Sidebar`, `AppShell`, `WithNav`;
   - rows and controls: `RowCard`/`RowMeta`/`RowTrailing`, `ToggleRow`, `MenuRow`, `AlertBanner`;
@@ -247,7 +251,7 @@ Prefer CSS (`desktop:` classes). Branch in JS with `useIsDesktop()` only when th
   - states and misc: `StateViews`, `SearchInput`, `FormField`, `Logo`, `ErrorBoundary`, `PageLoader`.
 
   Reuse these rather than adding one-off markup.
-- `src/lib/native.ts` wraps the Capacitor plugins (haptics, status bar, camera, barcode scanner, share) with web fallbacks. `src/lib/utils.ts` has `cn()`.
+- `src/lib/native.ts` wraps the Capacitor plugins (haptics, status bar, camera, the iOS barcode scanner, share) with web fallbacks. `src/lib/utils.ts` has `cn()`.
 - **Data layer.** `src/types/index.ts` has the domain types, which mirror `docs/api-contract.md` and `api/models.py` (keep all three in sync). `src/services/types.ts` defines the service interfaces (`recalls`, `scan`, `history`, `alerts`, `saved`, `auth`, `meta`), and `src/services/index.ts` exports `services`:
   - Every service is the HTTP adapter in `src/services/http/` (`apiFetch` in `src/lib/api.ts`), except the user's own data (`saved`, `history`, `alerts`, `scan.getScan`, and saving a scan). `userStore()` in `src/services/index.ts` routes those to the device for a guest (`src/services/local/`: `saved.ts`, `scans.ts`, `alerts.ts`, composed in `watch.ts`; all localStorage) or to the account when signed in (`src/services/firebase/data.ts`, Firestore). `scan.scanBarcode` calls the API, then saves the result and its alerts (on the device if the account can't be reached).
   - The rules for the user's data (one product per barcode, when an alert is new or upgraded, re-checks in batches of 100, merging a device into an account) are pure functions in `src/services/user-data.ts`, shared by both stores and unit-tested.
@@ -263,7 +267,7 @@ Prefer CSS (`desktop:` classes). Branch in JS with `useIsDesktop()` only when th
   - Account actions take the uid the screen shows (`deleteAccount({ uid, password })`, `updatePrefs(prefs, uid)`) and refuse if someone else is signed in by then, so a stale tab can't delete the wrong account.
   - Signing in or up merges the device's guest data into the account (`afterSignIn` in `src/services/firebase/account.ts`), then removes what it merged from the device. Documents the rules refuse (and their product's alerts) stay on the device, are logged, and are retried on the next start.
   - Signed in, if the account can't be reached the data screens show their error state; only a new scan falls back to the device (and merges later).
-  - Google sign-in is a popup on the web and is hidden in the iOS app (needs a native plugin). Sign in with Apple isn't built and isn't offered. Sign-up asks "I'm 13 or older".
+  - Google sign-in is a popup on the web and is hidden in the iOS app (needs a native plugin). Sign in with Apple isn't built and isn't offered. Sign-up doesn't ask for an age.
   - Deleting an account asks for the password (email accounts) or a Google popup, then deletes everything under `users/{uid}` and the login, from the client.
   - Firebase is loaded on demand (`getFirebase()` in `src/lib/firebase.ts`, Firestore Lite); with the flag off it isn't in the build at all.
   - Auth forms use react-hook-form + zod with `FormField`. Service errors show via `form.setError('root')`; Firebase errors become `ApiError`s with readable messages in `src/services/firebase/errors.ts`.
@@ -365,7 +369,7 @@ Roughly in priority order. When you finish one, update the status tables in `doc
    - Also `PATCH /api/scans/{scanId}/items/{itemId}` for naming unreadable lines. Then set `features.receiptScan = true` (it also shows the Receipts tab and Home's "Recent Receipts").
 9. **Accounts: finish and turn on.** Built behind `features.accounts` (see "Accounts (Firebase)").
    - Walk through accounts locally on the emulators (sign up with device data, Google, log out and in, two tabs, delete).
-   - Before showing accounts to anyone: add a contact address to `/privacy` (`src/screens/Privacy.tsx`, with its "Last updated" date), add Google's official "G" at `public/brand/google-g.svg`, and decide how to handle under-13 users (sign-up asks "I'm 13 or older"; Google sign-in from the Log in page skips that question).
+   - Before showing accounts to anyone: add a contact address to `/privacy` (`src/screens/Privacy.tsx`, with its "Last updated" date), add Google's official "G" at `public/brand/google-g.svg`, and decide how to handle under-13 users (sign-up doesn't ask for an age; `/privacy` says accounts are for people 13 and older).
    - Set up the real Firebase project and deploy `firestore.rules`, then turn the flag on in Vercel Preview, then production.
    - Later: Sign in with Apple and Google in the iOS app (`@capacitor-firebase/authentication`), per-user quotas on the backend (verify the Firebase ID token in FastAPI), the summary cache in Firestore (`recallSummaries/{recallNumber}`), and a lighter Products list for large accounts (it reads up to 200 full scan documents; a compact product document per scan would cut that).
 

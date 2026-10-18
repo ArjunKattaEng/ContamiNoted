@@ -96,7 +96,7 @@ export function Alerts() {
                     <p className="mb-3 text-sm text-muted-foreground">
                       Check the lot code and date on each item against the recall, then dismiss the alert once it’s handled.
                     </p>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid md:grid-cols-2 md:gap-x-8">
                       {active.map((a) => (
                         <AlertCard key={a.id} alert={a} />
                       ))}
@@ -106,7 +106,7 @@ export function Alerts() {
                 {dismissed.length > 0 && (
                   <section className="mt-6">
                     <SectionTitle>Dismissed ({dismissed.length})</SectionTitle>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid md:grid-cols-2 md:gap-x-8">
                       {dismissed.map((a) => (
                         <AlertCard key={a.id} alert={a} />
                       ))}

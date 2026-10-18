@@ -1,5 +1,6 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": { "noEmit": true, "types": ["node", "vite/client"] },
-  "include": ["src", "tests", "vitest.firebase.config.ts"]
+  "include": ["src", "tests", "vitest.firebase.config.ts"],
+  "exclude": []
 }

@@ -44,7 +44,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function GuestCard() {
   const navigate = useNavigate()
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border border-border/60 bg-card shadow-card p-4">
       <strong>You’re using RecallGuard as a guest</strong>
       <p className="mt-1 text-sm text-muted-foreground">
         Create a free account to keep your scans, alerts and saved recalls on all your devices.
@@ -64,7 +64,7 @@ function GuestCard() {
 
 function AccountCard({ user }: { user: UserProfile }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
+    <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card shadow-card p-4">
       <div
         className="grid size-12 flex-none place-items-center rounded-full bg-primary text-lg font-bold text-primary-foreground"
         aria-hidden
@@ -126,7 +126,7 @@ function DataSources() {
   const status = useDataSourceStatus().data
   return (
     <Section title="Data & sources">
-      <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
+      <div className="space-y-2 rounded-lg border border-border/60 bg-card shadow-card p-4 text-sm">
         <p>
           Recalls come from the FDA’s openFDA food enforcement reports
           {status && <> (last updated {formatDate(status.openFdaLastUpdated)})</>}.
@@ -323,7 +323,7 @@ function SavedInAccount() {
   const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
   return (
     <Section title="Saved in your account">
-      <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
+      <div className="space-y-2 rounded-lg border border-border/60 bg-card shadow-card p-4 text-sm">
         <p>
           {count(saved.length, 'saved recall', 'saved recalls')}
           {features.history && <>, {count(products.length, 'scanned product', 'scanned products')}</>}. They’re on
@@ -362,7 +362,7 @@ function SavedOnDevice() {
 
   return (
     <Section title="Saved on this device">
-      <div className="space-y-3 rounded-lg border bg-card p-4 text-sm">
+      <div className="space-y-3 rounded-lg border border-border/60 bg-card shadow-card p-4 text-sm">
         <p>
           {saved.length === 0
             ? 'You haven’t saved any recalls yet. Tap the star on a recall to keep it.'

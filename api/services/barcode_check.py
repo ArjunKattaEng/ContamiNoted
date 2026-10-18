@@ -5,7 +5,7 @@ The verdict is written from templates, not by the AI, so a model outage can't ch
 
   1. Validate and normalize the barcode (400 invalid_barcode).
   2. In parallel: Open Food Facts (name, brand, size) and openFDA recalls that print this barcode.
-  3. With a brand and a name: openFDA recalls that mention every brand word.
+  3. With a brand and a name: openFDA recalls whose product description mentions every brand word.
   4. classify() each candidate: confirmed (barcode printed) or possible (brand + name), else dropped.
 
 Candidates are recalls still ongoing, or reported in the last MATCH_WINDOW_DAYS. openFDA failing is a 502:

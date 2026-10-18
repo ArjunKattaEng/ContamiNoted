@@ -140,6 +140,8 @@ export interface WatchItem {
   brand?: string
   upc?: string
   size?: string
+  /** Product photo (Open Food Facts), for barcode items. */
+  imageUrl?: string
   /** YYYY-MM-DD */
   purchaseDate?: string
   createdAt: string

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { FileQuestion, Share2, ShieldCheck, Star, SearchX } from 'lucide-react'
+import { CalendarDays, FileQuestion, HeartPulse, MapPin, Share2, ShieldCheck, Star, SearchX } from 'lucide-react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Markdown } from '@/components/Markdown'
-import { ClassificationBadge, MatchBadge, RecallStatusBadge } from '@/components/RecallBadges'
+import { ClassificationBadge, HazardIcon, HazardTile, MatchBadge, RecallStatusBadge } from '@/components/RecallBadges'
 import { RecallCardSkeleton, RecallGrid } from '@/components/RecallCard'
 import { RecallList } from '@/components/RecallList'
 import { Screen } from '@/components/Screen'
@@ -22,6 +22,7 @@ import { useRecallFlags } from '@/hooks/use-recall-flags'
 import { useRecall, useRecallSearch, useRecallSummary, useRecentRecalls } from '@/hooks/use-recalls'
 import { useSavedRecalls } from '@/hooks/use-saved'
 import { formatDate } from '@/lib/format'
+import { classificationRisk, hazardOf } from '@/lib/hazard'
 import { isCancel, shareRecall } from '@/lib/native'
 import { DEFAULT_RECALL_WINDOW, parseRecallWindow, RECALL_WINDOWS, recallWindowLabel } from '@/lib/recall'
 import { itemOrigin } from '@/lib/scan'
@@ -340,6 +341,57 @@ function SummarySections({ recall, loading }: { recall: Recall; loading: boolean
   )
 }
 
+/** The dot color for a recall's risk, as in Yuka's product facts (red = serious, orange = moderate). */
+const riskDot = { 'Class I': 'bg-destructive', 'Class II': 'bg-caution', 'Class III': 'bg-muted-foreground/40' } as const
+
+/** One fact row (Yuka's "Negatives" list): an icon, a title with a gray line under it, and a colored dot. */
+function FactRow({ icon, title, detail, dot }: { icon: ReactNode; title: ReactNode; detail?: ReactNode; dot?: string }) {
+  return (
+    <li className="flex items-center gap-3 border-b py-3 last:border-b-0">
+      <span className="flex-none text-muted-foreground [&_svg]:size-6 [&_svg]:stroke-[1.5]">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium leading-snug">{title}</p>
+        {detail && <p className="line-clamp-2 text-xs text-muted-foreground">{detail}</p>}
+      </div>
+      {dot && <span className={cn('size-3 flex-none rounded-full', dot)} aria-hidden />}
+    </li>
+  )
+}
+
+/** What the recall is about, at a glance: the problem, the health risk, where it was sold and when. */
+function RecallFacts({ recall }: { recall: Recall }) {
+  const hazard = hazardOf(recall.reasonForRecall)
+  return (
+    <section className="mb-4">
+      <h3 className="text-[17px] font-bold">At a glance</h3>
+      <ul>
+        <FactRow
+          icon={<HazardIcon kind={hazard.kind} />}
+          title={hazard.label}
+          detail={recall.reasonForRecall}
+          dot={riskDot[recall.classification]}
+        />
+        <FactRow
+          icon={<HeartPulse aria-hidden />}
+          title={`${recall.classification} health risk`}
+          detail={classificationRisk[recall.classification]}
+          dot={riskDot[recall.classification]}
+        />
+        {recall.distributionPattern && <FactRow icon={<MapPin aria-hidden />} title="Where it was sold" detail={recall.distributionPattern} />}
+        <FactRow
+          icon={<CalendarDays aria-hidden />}
+          title={recall.status === 'Ongoing' ? 'Recall ongoing' : `Recall ${recall.status.toLowerCase()}`}
+          detail={
+            recall.status !== 'Ongoing' && recall.terminationDate
+              ? `Closed ${formatDate(recall.terminationDate)} · reported ${formatDate(recall.reportDate)}`
+              : `Reported ${formatDate(recall.reportDate)}`
+          }
+        />
+      </ul>
+    </section>
+  )
+}
+
 function FdaDetails({ recall }: { recall: Recall }) {
   const rows: [string, ReactNode][] = [
     ['Recall number', recall.recallNumber],
@@ -428,8 +480,8 @@ function DetailSkeleton() {
 
 function DesktopCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-lg border bg-card p-4">
-      <h3 className="mb-3 text-[13px] font-bold uppercase tracking-[.05em] text-muted-foreground">{title}</h3>
+    <section className="rounded-lg border border-border/60 bg-card shadow-card p-4">
+      <h3 className="mb-3 text-[15px] font-bold">{title}</h3>
       {children}
     </section>
   )
@@ -519,18 +571,25 @@ export function RecallDetail() {
   const saved = flags.isSaved(recall.recallNumber)
   const matched = flags.isMatched(recall.recallNumber)
 
+  // Yuka's product page layout: picture, name, maker, then the rating as a big colored dot
   const heading = (
     <div className="mb-4">
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <ClassificationBadge classification={recall.classification} />
-        <RecallStatusBadge status={recall.status} />
-        {matched && <MatchBadge />}
+      <div className="flex items-start gap-4 border-b pb-4">
+        <HazardTile kind={hazardOf(recall.reasonForRecall).kind} className="size-20 rounded-2xl" />
+        <div className="min-w-0 flex-1">
+          <h2 className="line-clamp-4 text-lg font-bold leading-snug desktop:text-xl">{recall.productDescription}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{recall.recallingFirm}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <ClassificationBadge classification={recall.classification} large />
+            <RecallStatusBadge status={recall.status} />
+            {matched && <MatchBadge />}
+          </div>
+        </div>
       </div>
-      <h2 className="text-lg font-bold leading-snug desktop:text-xl">{recall.productDescription}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {recall.recallingFirm} · Reported {formatDate(recall.reportDate)} · {recall.recallNumber}
-      </p>
       {recall.summary?.shortSummary && <p className="mt-3 font-medium leading-snug">{recall.summary.shortSummary}</p>}
+      <p className="mt-1 text-xs text-muted-foreground">
+        Reported {formatDate(recall.reportDate)} · {recall.recallNumber}
+      </p>
     </div>
   )
 
@@ -568,6 +627,7 @@ export function RecallDetail() {
           <div className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-8">
             <div>
               {heading}
+              <RecallFacts recall={recall} />
               <SummarySections recall={recall} loading={summaryLoading} />
             </div>
             <aside className="sticky top-0 space-y-4">
@@ -598,6 +658,7 @@ export function RecallDetail() {
       {header}
       <Screen>
         {heading}
+        <RecallFacts recall={recall} />
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="summary">Summary</TabsTrigger>

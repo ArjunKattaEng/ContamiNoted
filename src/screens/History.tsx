@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react'
-import { Package, Receipt, ScanBarcode, ScanLine, SearchX, Trash2 } from 'lucide-react'
+import { Package, Receipt, ScanLine, SearchX, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/sonner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RowCard, RowMeta, RowTrailing } from '@/components/RowCard'
-import { IconTile, ReceiptRow } from '@/components/ScanRows'
+import { IconTile, ProductImage, ReceiptRow } from '@/components/ScanRows'
 import { MatchStatusBadge } from '@/components/ScanStatus'
 import { Screen } from '@/components/Screen'
 import { ScreenHeader } from '@/components/ScreenHeader'
@@ -110,7 +110,7 @@ export function ReceiptHistory() {
           Try a different store or item name, or another filter.
         </EmptyState>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid md:grid-cols-2 md:gap-x-8">
           {shown.map((scan) => (
             <ReceiptRow key={scan.id} scan={scan} onOpen={() => navigate(scanPath(scan))} />
           ))}
@@ -164,7 +164,7 @@ function ProductRow({ item }: { item: WatchItem }) {
         : ''
   return (
     <RowCard onClick={open}>
-      <IconTile icon={item.source === 'barcode' ? ScanBarcode : Receipt} />
+      {item.source === 'barcode' ? <ProductImage src={item.imageUrl} className="size-12" /> : <IconTile icon={Receipt} />}
       <RowMeta title={productTitle(item)}>
         <span className="block truncate text-xs">{detail || `Added ${formatTimestampDate(item.createdAt)}`}</span>
       </RowMeta>
@@ -240,7 +240,7 @@ export function ScannedProducts() {
       body = <EmptyState icon={SearchX} title="No products match" />
     } else {
       body = (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid md:grid-cols-2 md:gap-x-8">
           {shown.map((item) => (
             <ProductRow key={item.id} item={item} />
           ))}

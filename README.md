@@ -61,5 +61,5 @@ The Integrated POS (7.1), FDA Sync Status (7.2) and Notifications (7.3) wirefram
 ## Next steps (TODOs)
 
 - See "Next steps" in `CLAUDE.md`: live barcode scans, receipts (Document AI), then Firebase accounts, history and alerts.
-- Camera and barcode scanning go through `src/lib/native.ts` (Capacitor).
+- Barcodes are read in `src/lib/scanner/` (live camera view: `components/BarcodeCamera.tsx`); the iOS app's native scanner and the other Capacitor plugins go through `src/lib/native.ts`.
 - shadcn primitives are in `src/components/ui/` and app components in `src/components/`. Styling is Tailwind, with tokens in `src/index.css`.

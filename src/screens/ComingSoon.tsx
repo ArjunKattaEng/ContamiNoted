@@ -45,7 +45,7 @@ export function ComingSoon({ feature }: { feature: UpcomingFeature }) {
       <Screen>
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
           <Icon className="mb-4 size-12 text-muted-foreground" strokeWidth={1.5} aria-hidden />
-          <span className="mb-2 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[.06em] text-muted-foreground">
+          <span className="mb-2 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">
             Coming soon
           </span>
           <p className="max-w-sm text-muted-foreground">{text}</p>

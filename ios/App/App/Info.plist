@@ -29,7 +29,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>RecallGuard can save receipt photos to your library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>RecallGuard can read receipt photos from your library to check them for recalled products.</string>
+	<string>RecallGuard can read receipt and barcode photos from your library to check them for recalled products.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

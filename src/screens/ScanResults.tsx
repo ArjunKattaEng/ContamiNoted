@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
-import { FileQuestion, Package, Search } from 'lucide-react'
+import { FileQuestion, Search } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RecallList } from '@/components/RecallList'
 import { ScanDisclaimer, ScanItemRow, VerdictCard } from '@/components/ScanParts'
-import { IconTile } from '@/components/ScanRows'
-import { MatchStatusBadge, StatusIcon } from '@/components/ScanStatus'
+import { ProductImage } from '@/components/ScanRows'
+import { MatchStatusBadge } from '@/components/ScanStatus'
 import { Screen, SectionTitle } from '@/components/Screen'
 import { ScreenHeader } from '@/components/ScreenHeader'
 import { EmptyState, ErrorState } from '@/components/StateViews'
@@ -151,7 +151,7 @@ export function ReceiptResult() {
       {flagged.length > 0 && (
         <section>
           <SectionTitle className="mt-0">Needs attention ({flagged.length})</SectionTitle>
-          <ul className="rounded-lg border bg-card px-3">
+          <ul className="rounded-lg border border-border/60 bg-card shadow-card px-3">
             {flagged.map((item) => (
               <ScanItemRow key={item.id} scanId={scan.id} item={item} />
             ))}
@@ -161,7 +161,7 @@ export function ReceiptResult() {
       {clear.length > 0 && (
         <section>
           <SectionTitle className="mt-0">No recall found ({clear.length})</SectionTitle>
-          <ul className="rounded-lg border bg-card px-3">
+          <ul className="rounded-lg border border-border/60 bg-card shadow-card px-3">
             {clear.map((item) => (
               <ScanItemRow key={item.id} scanId={scan.id} item={item} />
             ))}
@@ -215,24 +215,24 @@ export function BarcodeResult() {
 
   const main = (
     <>
-      <section className="flex items-start gap-3 rounded-lg border bg-card p-4">
-        <IconTile icon={Package} className="size-14" />
+      {/* Product header in Yuka's layout: photo, name, brand, then the status as a big colored dot */}
+      <section className="flex items-center gap-4 border-b pb-4">
+        <ProductImage src={product?.imageUrl} className="size-24 [&_svg]:size-8" />
         <div className="min-w-0 flex-1">
-          <div className="mb-1">
-            <MatchStatusBadge status={item.status} />
-          </div>
-          <h2 className="font-bold leading-snug">{product?.name ?? item.name}</h2>
+          <h2 className="text-xl font-bold leading-snug">{product?.name ?? item.name}</h2>
           {(product?.brand || product?.size) && (
             <p className="text-sm text-muted-foreground">{[product.brand, product.size].filter(Boolean).join(' · ')}</p>
           )}
+          <div className="my-2">
+            <MatchStatusBadge status={item.status} large />
+          </div>
           {product?.upc && (
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
+            <p className="font-mono text-xs text-muted-foreground">
               {product.upc.length === 12 ? `UPC ${formatUpc(product.upc)}` : `Barcode ${product.upc}`}
             </p>
           )}
           <p className="text-xs text-muted-foreground">Scanned {formatTimestampDate(scan.createdAt)}</p>
         </div>
-        <StatusIcon status={item.status} />
       </section>
       {item.note && <p className="text-sm">{item.note}</p>}
       <VerdictCard verdict={scan.verdict} counts={scan.counts} />

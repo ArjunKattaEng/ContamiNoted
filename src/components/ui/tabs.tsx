@@ -5,14 +5,14 @@ import { cn } from '@/lib/utils'
 
 const Tabs = TabsPrimitive.Root
 
-/** Underlined, equal-width tabs (wireframe style) rather than shadcn's pill tabs. */
+/** Equal-width segmented control (iOS style): a gray track with the active tab raised in white. */
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn('my-2 mb-3 grid auto-cols-fr grid-flow-col border-b text-muted-foreground', className)}
+    className={cn('my-2 mb-3 grid auto-cols-fr grid-flow-col gap-1 rounded-xl bg-muted p-1 text-muted-foreground', className)}
     {...props}
   />
 ))
@@ -25,7 +25,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      '-mb-px border-b-2 border-transparent p-2.5 text-[11px] font-bold uppercase tracking-[.06em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-foreground data-[state=active]:text-foreground',
+      'rounded-lg px-2 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm',
       className,
     )}
     {...props}

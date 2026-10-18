@@ -112,9 +112,9 @@ def test_brand_search_requires_every_brand_word(scan):
     off.product = Product(upc="", name="Organic Rolled Oats", brand="Nature's Path")
     post(client, "012345678905")
     brand_search = fda.searches[1]
-    assert 'product_description:"nature\'s"+recalling_firm:"nature\'s"+product_description:"natures"' in brand_search
-    assert 'product_description:"nature"+recalling_firm:"nature")' in brand_search
-    assert '+AND+(product_description:"path"+recalling_firm:"path")' in brand_search
+    assert '(product_description:"nature\'s"+product_description:"natures"+product_description:"nature")' in brand_search
+    assert '+AND+(product_description:"path")' in brand_search
+    assert "recalling_firm" not in brand_search
 
 
 def test_no_brand_search_without_a_name_to_match(scan):

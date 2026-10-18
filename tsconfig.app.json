@@ -25,5 +25,7 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Tests run in Node and are checked by tsconfig.tests.json (which has Node's types)
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -39,10 +39,10 @@ export function Screen({ children, className, center, insetTop, narrow }: Screen
   )
 }
 
-/** Small uppercase section heading. */
+/** Section heading (sentence case, as in iOS lists). */
 export function SectionTitle({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={cn('mb-2 mt-[18px] text-[13px] font-bold uppercase tracking-[.05em] text-muted-foreground', className)}>
+    <h2 className={cn('mb-2.5 mt-6 text-[17px] font-bold text-foreground', className)}>
       {children}
     </h2>
   )

@@ -1,4 +1,4 @@
-import { forwardRef, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { MailCheck } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -77,22 +77,18 @@ function GoogleMark() {
 /**
  * Google sign-in, in a popup. Not offered in the iOS app (Google blocks its sign-in page inside app web views;
  * that needs a native plugin, and Sign in with Apple alongside it). Sign in with Apple isn't built yet.
- * `beforeSignIn` can stop it (e.g. the age check on sign-up) by returning false.
  */
 function SocialSignIn({
   onSignedIn,
   onError,
-  beforeSignIn,
 }: {
   onSignedIn: (user: UserProfile) => void
   onError: (message: string) => void
-  beforeSignIn?: () => boolean
 }) {
   const social = useSocialSignIn()
   if (isNative) return null
   const signIn = () => {
     if (!accountsLive) return showComingSoon()
-    if (beforeSignIn && !beforeSignIn()) return
     social.mutate(undefined, {
       onSuccess: onSignedIn,
       onError: (err) => {
@@ -219,36 +215,8 @@ const signUpSchema = z
     email: z.string().trim().email('Enter a valid email address'),
     password: z.string().min(6, 'Use at least 6 characters'),
     confirm: z.string(),
-    oldEnough: z.boolean().refine((v) => v, 'Accounts are for people 13 and older'),
   })
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords don’t match' })
-
-/** Age confirmation for sign-up (accounts are for people 13 and older). */
-const AgeCheck = forwardRef<HTMLInputElement, ComponentProps<'input'> & { error?: string }>(({ error, ...props }, ref) => {
-  const id = useId()
-  return (
-    <div>
-      <label htmlFor={id} className="flex items-center gap-2 text-sm">
-        <input
-          ref={ref}
-          id={id}
-          type="checkbox"
-          className="size-4 accent-primary"
-          aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : undefined}
-          {...props}
-        />
-        I’m 13 or older
-      </label>
-      {error && (
-        <p id={`${id}-error`} className="mt-1 text-xs text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  )
-})
-AgeCheck.displayName = 'AgeCheck'
 
 export function SignUp() {
   const user = useCurrentUser().data
@@ -257,7 +225,7 @@ export function SignUp() {
   const { afterAuth, justSignedIn } = useAfterAuth()
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: '', email: '', password: '', confirm: '', oldEnough: false },
+    defaultValues: { name: '', email: '', password: '', confirm: '' },
   })
   const { errors } = form.formState
 
@@ -299,13 +267,6 @@ export function SignUp() {
       <SocialSignIn
         onSignedIn={(u) => afterAuth(u, 'Welcome')}
         onError={(message) => form.setError('root', { message })}
-        beforeSignIn={() => {
-          // Synchronous, so the Google window still opens from the click
-          if (form.getValues('oldEnough')) return true
-          form.setError('oldEnough', { message: 'Tick “I’m 13 or older” first: accounts are for people 13 and older' })
-          form.setFocus('oldEnough')
-          return false
-        }}
       />
       <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
         <FormField label="Name" autoComplete="name" error={errors.name?.message} {...form.register('name')} />
@@ -332,10 +293,6 @@ export function SignUp() {
           autoComplete="new-password"
           error={errors.confirm?.message}
           {...form.register('confirm')}
-        />
-        <AgeCheck
-          error={errors.oldEnough?.message}
-          {...form.register('oldEnough', { onChange: () => form.clearErrors('oldEnough') })}
         />
         <FormError message={errors.root?.message} />
         <Button type="submit" disabled={signUp.isPending}>

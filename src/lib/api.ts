@@ -31,10 +31,15 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     throw new ApiError('upstream_error', 'Couldn’t reach RecallGuard. Check your connection.', 0)
   }
   if (res.status === 204) return undefined as T
-  const body = await res.json().catch(() => ({}))
+  const body = await res.json().catch(() => undefined)
+  // Not JSON: something other than the API answered (e.g. the iOS app's own index.html when VITE_API_BASE_URL
+  // wasn't set at build time). An error, never an empty success the screens would crash on.
+  if (res.ok && body === undefined) {
+    throw new ApiError('upstream_error', 'Couldn’t reach RecallGuard. Check your connection.', res.status)
+  }
   if (!res.ok) {
-    const err = (body as { error?: { code?: ApiErrorCode; message?: string }; retryAfter?: number }).error
-    throw new ApiError(err?.code ?? 'upstream_error', err?.message ?? `Request failed (${res.status})`, res.status, (body as { retryAfter?: number }).retryAfter)
+    const err = (body as { error?: { code?: ApiErrorCode; message?: string } } | undefined)?.error
+    throw new ApiError(err?.code ?? 'upstream_error', err?.message ?? `Request failed (${res.status})`, res.status, (body as { retryAfter?: number } | undefined)?.retryAfter)
   }
   return body as T
 }

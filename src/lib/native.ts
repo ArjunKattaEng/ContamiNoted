@@ -36,11 +36,12 @@ export async function captureReceipt() {
 }
 
 /**
- * Scan a product barcode. iOS uses the native Vision-based scanner UI;
- * web shows the plugin's html5-qrcode overlay using the browser camera.
+ * Scan a product barcode with the iOS app's native scanner UI. The web app doesn't use this: it reads
+ * barcodes from its own camera view (`BarcodeCamera`), which handles product barcodes far better than
+ * the plugin's web fallback (html5-qrcode, which only reads a small square in the middle of the frame).
  */
 export async function scanBarcode() {
-  // Lazy: the web fallback pulls in html5-qrcode (~350 kB), only needed once the user scans
+  // Lazy: only loaded when the native scanner opens
   const { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } = await import('@capacitor/barcode-scanner')
   const result = await CapacitorBarcodeScanner.scanBarcode({
     hint: CapacitorBarcodeScannerTypeHint.ALL,

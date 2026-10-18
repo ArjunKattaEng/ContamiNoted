@@ -2,13 +2,13 @@ import { useNavigate } from 'react-router-dom'
 import { useRecallFlags } from '@/hooks/use-recall-flags'
 import { useRecallSummaries } from '@/hooks/use-recalls'
 import { recallPath } from '@/lib/recall'
-import { cn } from '@/lib/utils'
 import type { Recall, RecallRef } from '@/types'
 import { RecallCard } from './RecallCard'
+import { RowList } from './RowCard'
 
 interface RecallListProps {
   /** Saved recalls only carry a RecallRef; list results carry firm and short summary too. */
-  recalls: (RecallRef & Partial<Pick<Recall, 'recallingFirm' | 'summary'>>)[]
+  recalls: (RecallRef & Partial<Pick<Recall, 'recallingFirm' | 'summary' | 'reasonForRecall'>>)[]
   /** Two columns from tablet width up (main lists); off for narrow side columns. */
   grid?: boolean
 }
@@ -20,7 +20,7 @@ export function RecallList({ recalls, grid = true }: RecallListProps) {
   // Live lists arrive before their AI summaries; fetch those for the cards that lack one
   const { summaries, loading } = useRecallSummaries(recalls.filter((r) => !r.summary).map((r) => r.recallNumber))
   return (
-    <div className={cn('grid gap-3', grid && 'md:grid-cols-2')}>
+    <RowList grid={grid}>
       {recalls.map((r) => (
         <RecallCard
           key={r.recallNumber}
@@ -32,6 +32,6 @@ export function RecallList({ recalls, grid = true }: RecallListProps) {
           onToggleSaved={() => flags.toggleSaved(r)}
         />
       ))}
-    </div>
+    </RowList>
   )
 }

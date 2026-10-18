@@ -5,20 +5,23 @@
 /* Design tokens. Colors are HSL triplets so Tailwind can apply opacity (e.g. bg-primary/90). */
 @layer base {
   :root {
-    --background: 0 0% 96.5%;
-    --foreground: 0 0% 13%;
+    /* Yuka-style: a fresh green brand on plain white screens, lists divided by hairlines, and statuses as
+       colored dots (red = confirmed / Class I, orange = possible / Class II). The green is darkened enough
+       for white button text to stay readable (WCAG AA). */
+    --background: 0 0% 100%;
+    --foreground: 222 25% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 13%;
+    --card-foreground: 222 25% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 13%;
-    --primary: 0 0% 23%;
+    --popover-foreground: 222 25% 12%;
+    --primary: 145 63% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 92%;
-    --secondary-foreground: 0 0% 23%;
-    --muted: 0 0% 89%;
-    --muted-foreground: 0 0% 47%;
-    --accent: 0 0% 94%;
-    --accent-foreground: 0 0% 13%;
+    --secondary: 140 45% 94%;
+    --secondary-foreground: 145 63% 24%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 42%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 25% 12%;
     --destructive: 6 63% 46%;
     --destructive-foreground: 0 0% 100%;
     --destructive-soft: 7 80% 93%;
@@ -26,10 +29,12 @@
     --success-soft: 145 47% 92%;
     --warning: 47 100% 27%;
     --warning-soft: 47 100% 92%;
-    --border: 0 0% 83%;
-    --input: 0 0% 83%;
-    --ring: 0 0% 23%;
-    --radius: 0.625rem;
+    /* Status dots (Yuka's palette): orange for "possible" / Class II */
+    --caution: 30 95% 50%;
+    --border: 220 13% 90%;
+    --input: 220 13% 86%;
+    --ring: 145 60% 38%;
+    --radius: 0.875rem;
 
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);

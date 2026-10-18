@@ -5,7 +5,8 @@ import { AlertBanner } from '@/components/AlertBanner'
 import { RecallCardSkeleton } from '@/components/RecallCard'
 import { RecallList } from '@/components/RecallList'
 import { RowCard, RowMeta } from '@/components/RowCard'
-import { IconTile, ReceiptRow } from '@/components/ScanRows'
+import { IconTile, ProductImage, ReceiptRow } from '@/components/ScanRows'
+import { MatchStatusBadge } from '@/components/ScanStatus'
 import { Screen, SectionTitle } from '@/components/Screen'
 import { ErrorState } from '@/components/StateViews'
 import { TopBar } from '@/components/TopBar'
@@ -17,16 +18,18 @@ import { useSavedRecalls } from '@/hooks/use-saved'
 import { useScanHistory } from '@/hooks/use-scans'
 import { canScan, features } from '@/lib/features'
 import { scanPath } from '@/lib/scan'
+import { cn } from '@/lib/utils'
+import type { WatchItem } from '@/types'
 
 const quickActions: { label: string; icon: LucideIcon; to: string; show: boolean }[] = [
-  { label: 'Scan Receipt', icon: Receipt, to: '/scan?mode=receipt', show: features.receiptScan },
-  { label: 'Scan Product', icon: ScanBarcode, to: '/scan?mode=product', show: features.barcodeScan },
-  { label: 'Check Recalls', icon: Search, to: '/recalls', show: true },
+  { label: 'Scan receipt', icon: Receipt, to: '/scan?mode=receipt', show: features.receiptScan },
+  { label: 'Scan product', icon: ScanBarcode, to: '/scan?mode=product', show: features.barcodeScan },
+  { label: 'Check recalls', icon: Search, to: '/recalls', show: true },
 ]
 
 function SeeAll({ to }: { to: string }) {
   return (
-    <Link to={to} className="text-xs normal-case tracking-normal text-foreground underline underline-offset-2">
+    <Link to={to} className="text-sm font-semibold text-primary hover:underline">
       See all
     </Link>
   )
@@ -34,7 +37,7 @@ function SeeAll({ to }: { to: string }) {
 
 function ListSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       {[0, 1, 2].map((i) => (
         <RecallCardSkeleton key={i} />
       ))}
@@ -57,7 +60,7 @@ function SavedRecalls() {
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
   if (query.data.length === 0) {
     return (
-      <RowCard className="border-dashed">
+      <RowCard variant="box" className="border-dashed">
         <IconTile icon={Star} />
         <RowMeta title="No saved recalls yet">Tap the star on a recall to keep it here.</RowMeta>
       </RowCard>
@@ -81,16 +84,36 @@ function RecentReceipts() {
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
   if (query.data.length === 0) {
     return (
-      <RowCard onClick={() => navigate('/scan?mode=receipt')} className="border-dashed">
+      <RowCard variant="box" onClick={() => navigate('/scan?mode=receipt')} className="border-dashed">
         <IconTile icon={Receipt} />
         <RowMeta title="Scan your first receipt">We’ll check every item for recalls.</RowMeta>
       </RowCard>
     )
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       {query.data.slice(0, 3).map((scan) => (
         <ReceiptRow key={scan.id} scan={scan} onOpen={() => navigate(scanPath(scan))} />
+      ))}
+    </div>
+  )
+}
+
+/** The newest scanned products with their photo and status, as Yuka's home shows your scan history. */
+function YourProducts({ products }: { products: WatchItem[] }) {
+  const navigate = useNavigate()
+  return (
+    <div className="flex flex-col">
+      {products.slice(0, 3).map((item) => (
+        <RowCard key={item.id} onClick={() => navigate(scanPath({ type: item.source, id: item.scanId }))}>
+          <ProductImage src={item.imageUrl} className="size-12" />
+          <RowMeta title={<span className="line-clamp-1">{item.name}</span>}>
+            {item.brand && <span className="block truncate text-xs">{item.brand}</span>}
+            <span className="mt-1 block">
+              <MatchStatusBadge status={item.status} />
+            </span>
+          </RowMeta>
+        </RowCard>
       ))}
     </div>
   )
@@ -99,7 +122,7 @@ function RecentReceipts() {
 /** Shown while barcode/receipt scanning isn't available yet. */
 function ScanningComingSoon() {
   return (
-    <RowCard className="mt-1 border-dashed desktop:max-w-2xl">
+    <RowCard variant="box" className="mt-1 border-dashed desktop:max-w-2xl">
       <IconTile icon={ScanLine} />
       <RowMeta title="Scanning is coming soon">
         Scan a product’s barcode or a grocery receipt and we’ll check it against FDA recalls.
@@ -126,15 +149,26 @@ export default function Home() {
 
       {canScan ? (
         <>
-          <SectionTitle>Quick Actions</SectionTitle>
+          <SectionTitle>Quick actions</SectionTitle>
           <div className="grid grid-cols-3 gap-2.5 desktop:max-w-2xl">
-            {actions.map(({ label, icon: Icon, to }) => (
+            {actions.map(({ label, icon: Icon, to }, i) => (
               <button
                 key={label}
                 onClick={() => navigate(to)}
-                className="flex flex-col items-center gap-1.5 rounded-lg border-[1.5px] bg-card px-1 py-3.5 text-[11px] font-bold uppercase hover:bg-accent"
+                className={cn(
+                  'flex flex-col items-center gap-2 rounded-lg px-1 py-3.5 text-[13px] font-semibold shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  // The first action (scanning) is the main one, as the camera tab is in scanner apps
+                  i === 0
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'border border-border/60 bg-card hover:bg-accent/60',
+                )}
               >
-                <Icon className="size-6" aria-hidden />
+                <span
+                  className={cn('grid size-10 place-items-center rounded-full', i === 0 ? 'bg-primary-foreground/15' : 'bg-secondary text-secondary-foreground')}
+                  aria-hidden
+                >
+                  <Icon className="size-5" />
+                </span>
                 {label}
               </button>
             ))}
@@ -144,10 +178,20 @@ export default function Home() {
         <ScanningComingSoon />
       )}
 
+      {features.history && products.length > 0 && (
+        <section className="desktop:max-w-2xl">
+          <SectionTitle className="flex items-baseline justify-between">
+            Your products
+            <SeeAll to="/products" />
+          </SectionTitle>
+          <YourProducts products={products} />
+        </section>
+      )}
+
       <div className="desktop:mt-4 desktop:grid desktop:grid-cols-2 desktop:gap-8">
         <section>
           <SectionTitle className="flex items-baseline justify-between">
-            Latest Recalls
+            Latest recalls
             <SeeAll to="/recalls" />
           </SectionTitle>
           <LatestRecalls />
@@ -156,7 +200,7 @@ export default function Home() {
         {features.history && features.receiptScan ? (
           <section>
             <SectionTitle className="flex items-baseline justify-between">
-              Recent Receipts
+              Recent receipts
               <SeeAll to="/receipts" />
             </SectionTitle>
             <RecentReceipts />
@@ -164,7 +208,7 @@ export default function Home() {
         ) : (
           <section>
             <SectionTitle className="flex items-baseline justify-between">
-              Saved Recalls
+              Saved recalls
               <SeeAll to="/recalls?tab=saved" />
             </SectionTitle>
             <SavedRecalls />

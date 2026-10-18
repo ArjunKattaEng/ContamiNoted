@@ -19,9 +19,14 @@ export function StatusIcon({ status, className }: { status: MatchStatus; classNa
   return <Icon className={cn('size-5 flex-none', color, className)} aria-label={label} />
 }
 
-export function MatchStatusBadge({ status }: { status: MatchStatus }) {
+/** `large`: the big dot and bold label under a product's name, as on Yuka's product page. */
+export function MatchStatusBadge({ status, large }: { status: MatchStatus; large?: boolean }) {
   const { badge, label } = statusStyle[status]
-  return <Badge variant={badge}>{label}</Badge>
+  return (
+    <Badge variant={badge} className={cn(large && 'gap-2 text-base font-semibold text-foreground before:size-4')}>
+      {label}
+    </Badge>
+  )
 }
 
 /** Badge summarizing a whole scan (receipt list rows). */

@@ -60,6 +60,11 @@ export default {
           DEFAULT: 'hsl(var(--warning))',
           soft: 'hsl(var(--warning-soft))',
         },
+        caution: 'hsl(var(--caution))',
+      },
+      boxShadow: {
+        // Soft lift for white cards on the gray background
+        card: '0 1px 2px hsl(222 30% 20% / 0.05), 0 2px 8px hsl(222 30% 20% / 0.04)',
       },
       borderRadius: {
         lg: 'var(--radius)',
