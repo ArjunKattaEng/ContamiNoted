@@ -43,7 +43,7 @@ def send_recall_alert(to_email: str, items: list[RecallEmailItem]) -> bool:
         return False
 
     subject = (
-        f"FDA recall alert: {items[0].recall.productDescription[:60]}"
+        f"FDA recall alert: {items[0].recall.product_description[:60]}"
         if len(items) == 1
         else f"FDA recall alerts: {len(items)} new recalls matching your preferences"
     )
@@ -52,9 +52,9 @@ def send_recall_alert(to_email: str, items: list[RecallEmailItem]) -> bool:
         f"""
         <tr>
           <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;">
-            <strong style="color:#111827;">{_esc(item.recall.productDescription[:120])}</strong><br>
-            <span style="color:#6b7280;font-size:13px;">{_esc(item.recall.recallingFirm)} &bull; {item.category} &bull; {item.recall.classification}</span><br>
-            <a href="{APP_URL}/recalls/{item.recall.recallNumber}"
+            <strong style="color:#111827;">{_esc(item.recall.product_description[:120])}</strong><br>
+            <span style="color:#6b7280;font-size:13px;">{_esc(item.recall.recalling_firm)} &bull; {item.category} &bull; {item.recall.classification}</span><br>
+            <a href="{APP_URL}/recalls/{item.recall.recall_number}"
                style="color:#16a34a;font-size:13px;">View recall &rarr;</a>
           </td>
         </tr>"""
