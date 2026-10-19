@@ -8,9 +8,11 @@ export const FOOD_CATEGORIES = [
   { id: 'Seafood',         description: 'Fish, shrimp, salmon, shellfish' },
   { id: 'Produce',         description: 'Fruits, vegetables, salads, herbs' },
   { id: 'Bakery & Snacks', description: 'Bread, crackers, chips, cookies, granola' },
-  { id: 'Nuts & Seeds',    description: 'Peanuts, almonds, walnuts, nut butters' },
-  { id: 'Ready-to-Eat',    description: 'Meal kits, dips, sandwiches, soups' },
-  { id: 'Beverages',       description: 'Juice, tea, water, smoothies' },
+  { id: 'Nuts & Seeds',        description: 'Peanuts, almonds, walnuts, nut butters' },
+  { id: 'Ready-to-Eat',        description: 'Meal kits, dips, sandwiches, soups' },
+  { id: 'Beverages',           description: 'Juice, tea, water, smoothies' },
+  { id: 'Supplements',         description: 'Vitamins, protein powder, dietary supplements' },
+  { id: 'Spices & Condiments', description: 'Spices, sauces, oils, condiments, honey' },
 ] as const
 
 export type FoodCategoryId = (typeof FOOD_CATEGORIES)[number]['id']
