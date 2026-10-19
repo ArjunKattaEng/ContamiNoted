@@ -6,6 +6,7 @@ Either way the scan still checks the barcode itself against recalls.
 """
 
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -17,7 +18,7 @@ from api.services.loop import PerLoop
 logger = logging.getLogger("recallguard.openfoodfacts")
 
 PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}.json"
-FIELDS = "code,product_name,product_name_en,generic_name,brands,quantity,image_front_small_url,categories"
+FIELDS = "code,product_name,product_name_en,generic_name,brands,quantity,image_front_small_url,categories,expiration_date"
 USER_AGENT = "RecallGuard/0.1 (student food-recall app; https://contami-noted.vercel.app)"
 MAX_TEXT = 120
 
@@ -34,6 +35,34 @@ def _text(value: Any) -> str | None:
 def _first(value: Any) -> str | None:
     """First entry of a comma-separated Open Food Facts list ("Ferrero, Nutella" → "Ferrero")."""
     return _text(str(value).split(",")[0]) if value else None
+
+
+# Matches DD/MM/YYYY or MM/DD/YYYY (treated as MM/DD/YYYY for US products) and YYYY-MM or YYYY-MM-DD
+_DATE_SLASH = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+_DATE_YM = re.compile(r"^(\d{4})-(\d{2})(?:-(\d{2}))?$")
+
+
+def _parse_expiry(raw: Any) -> str | None:
+    """Normalize an Open Food Facts expiration_date to YYYY-MM-DD, or None if unparseable."""
+    if not raw or not isinstance(raw, str):
+        return None
+    raw = raw.strip()
+    m = _DATE_SLASH.match(raw)
+    if m:
+        # Open Food Facts uses DD/MM/YYYY in most locales, but US entries often use MM/DD/YYYY.
+        # We can't tell which, so we return the value as-is for the user to confirm.
+        a, b, year = m.group(1), m.group(2), m.group(3)
+        # Treat first part as month (US convention); if > 12, swap.
+        month, day = (a, b) if int(a) <= 12 else (b, a)
+        try:
+            return f"{year}-{int(month):02d}-{int(day):02d}"
+        except ValueError:
+            return None
+    m = _DATE_YM.match(raw)
+    if m:
+        year, month, day = m.group(1), m.group(2), m.group(3) or "01"
+        return f"{year}-{month}-{day}"
+    return None
 
 
 def parse_product(body: dict[str, Any], code: str) -> Product | None:
@@ -53,6 +82,7 @@ def parse_product(body: dict[str, Any], code: str) -> Product | None:
         size=_text(product.get("quantity")),
         category=_first(product.get("categories")),
         image_url=image if isinstance(image, str) and image.startswith("https://") else None,
+        expiry_date=_parse_expiry(product.get("expiration_date")),
     )
 
 

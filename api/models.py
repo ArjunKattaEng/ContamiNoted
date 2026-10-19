@@ -85,6 +85,7 @@ class Product(CamelModel):
     size: str | None = None
     category: str | None = None
     image_url: str | None = None
+    expiry_date: str | None = None  # YYYY-MM-DD from Open Food Facts, when available
 
 
 class ScanItem(CamelModel):

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { FileQuestion, Search } from 'lucide-react'
+import { CalendarDays, CircleCheck, CircleX, FileQuestion, Search } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -15,8 +15,10 @@ import { useGoBack } from '@/hooks/use-go-back'
 import { useIsDesktop } from '@/hooks/use-media-query'
 import { useScan } from '@/hooks/use-scans'
 import { formatUpc } from '@/lib/barcode'
+import { isExpired, productSafety, safetyReason } from '@/lib/expiry'
 import { formatDate, formatTimestampDate } from '@/lib/format'
 import { byAttention, formatPrice } from '@/lib/scan'
+import { cn } from '@/lib/utils'
 import { isApiError } from '@/services/errors'
 import type { Scan, ScanType } from '@/types'
 
@@ -192,6 +194,52 @@ export function ReceiptResult() {
 const searchRecallsPath = (q: string | undefined) =>
   q && q !== 'Unknown product' ? `/recalls?q=${encodeURIComponent(q)}` : '/recalls'
 
+function ExpirySection({ scan }: { scan: Scan }) {
+  const item = scan.items[0]
+  const expiryDate = scan.product?.expiryDate
+
+  if (!item) return null
+
+  const safety = productSafety(item.status, expiryDate)
+  const reason = safetyReason(item.status, expiryDate)
+  const expired = expiryDate ? isExpired(expiryDate) : false
+
+  return (
+    <section className="space-y-3">
+      <div
+        className={cn(
+          'flex items-start gap-3 rounded-lg border p-4',
+          safety === 'good'
+            ? 'border-success/30 bg-success-soft'
+            : 'border-destructive/40 bg-destructive-soft',
+        )}
+      >
+        {safety === 'good' ? (
+          <CircleCheck className="mt-0.5 size-5 flex-none text-success" aria-hidden />
+        ) : (
+          <CircleX className="mt-0.5 size-5 flex-none text-destructive" aria-hidden />
+        )}
+        <div className="min-w-0">
+          <p className={cn('font-bold', safety === 'good' ? 'text-success' : 'text-destructive')}>
+            {safety === 'good' ? 'Good' : 'Not good'}
+          </p>
+          <p className="mt-0.5 text-sm">{reason}</p>
+        </div>
+      </div>
+
+      {expiryDate && (
+        <div className="flex items-center gap-3">
+          <CalendarDays className="size-4 flex-none text-muted-foreground" aria-hidden />
+          <span className="flex-none text-sm font-medium">Expiry date</span>
+          <span className={cn('text-sm', expired ? 'font-medium text-destructive' : 'text-foreground')}>
+            {formatDate(expiryDate)}
+          </span>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function BarcodeResult() {
   const navigate = useNavigate()
   const { scanId } = useParams()
@@ -236,6 +284,7 @@ export function BarcodeResult() {
       </section>
       {item.note && <p className="text-sm">{item.note}</p>}
       <VerdictCard verdict={scan.verdict} counts={scan.counts} />
+      <ExpirySection scan={scan} />
       {item.status === 'clear' && (
         // A search by brand or name can find a recall that doesn't print this barcode
         <Button variant="secondary" onClick={() => navigate(searchRecallsPath(product?.brand ?? product?.name))}>

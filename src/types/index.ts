@@ -72,6 +72,8 @@ export interface Product {
   size?: string
   category?: string
   imageUrl?: string
+  /** YYYY-MM-DD expiry date from Open Food Facts, when available. */
+  expiryDate?: string
 }
 
 export interface ScanItem {
