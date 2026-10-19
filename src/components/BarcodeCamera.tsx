@@ -5,6 +5,7 @@ import { tap } from '@/lib/native'
 import { type Detection, createReadConfirmer, drawToCanvas, readCanvas } from '@/lib/scanner'
 import { videoToView, visibleVideoRect } from '@/lib/scanner/geometry'
 import type { Point } from '@/lib/scanner/pixels'
+import { captureVideoThumbnail } from '@/lib/thumbnails'
 
 /** Live frames are read at up to 1280 px (≈ 10 ms each in ZXing); a photo of the frame at full size */
 const FRAME_MAX_EDGE = 1280
@@ -19,6 +20,8 @@ const REPEAT_MS = 4000
 export interface BarcodeCameraHandle {
   /** Read the current frame at full resolution, as a photo. Null if no barcode is in it. */
   capture(): Promise<Detection | null>
+  /** Capture the current frame as a small JPEG thumbnail (~80×80, ~1–3 KB data URL). */
+  captureSnapshot(): string | null
 }
 
 interface BarcodeCameraProps {
@@ -110,6 +113,9 @@ export const BarcodeCamera = forwardRef<BarcodeCameraHandle, BarcodeCameraProps>
         const frame = { width: element.videoWidth, height: element.videoHeight }
         const view = { width: element.clientWidth, height: element.clientHeight }
         return readCanvas(drawToCanvas(element, frame, PHOTO_MAX_EDGE, visibleVideoRect(frame, view)))
+      },
+      captureSnapshot() {
+        return video.current ? captureVideoThumbnail(video.current) : null
       },
     }),
     [],

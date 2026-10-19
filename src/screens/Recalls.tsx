@@ -25,7 +25,9 @@ import { formatDate } from '@/lib/format'
 import { classificationRisk, hazardOf } from '@/lib/hazard'
 import { isCancel, shareRecall } from '@/lib/native'
 import { DEFAULT_RECALL_WINDOW, parseRecallWindow, RECALL_WINDOWS, recallWindowLabel } from '@/lib/recall'
+import { saveRecallView } from '@/lib/recall-history'
 import { itemOrigin } from '@/lib/scan'
+import { saveSearch } from '@/lib/search-history'
 import { cn } from '@/lib/utils'
 import { features } from '@/lib/features'
 import { isApiError } from '@/services/errors'
@@ -216,6 +218,11 @@ export function Recalls() {
   const [input, setInput] = useState(params.get('q') ?? '')
   const q = useDebouncedValue(input.trim(), 300)
   const days = parseRecallWindow(params.get('days'))
+
+  // Save non-trivial search terms to recent search history
+  useEffect(() => {
+    if (q.length >= 2) saveSearch(q)
+  }, [q])
 
   // The 30-day default keeps the URL clean; other windows are kept in ?days= (all time = "all")
   const setDays = (value: number | null) =>
@@ -502,23 +509,21 @@ export function RecallDetail() {
   const flags = useRecallFlags()
   const isDesktop = useIsDesktop()
   const [tab, setTab] = useState('summary')
-  const [scrollToAction, setScrollToAction] = useState(false)
 
-  // "Find refund" jumps to the "What to do" section (after switching to the Summary tab on phones)
+  // Record this recall in view history once the data is loaded (must be before any early returns)
   useEffect(() => {
-    if (!scrollToAction) return
-    // Next frame: when the tab just switched, the Summary panel needs a layout pass first
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(ACTION_SECTION_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      setScrollToAction(false)
+    if (!query.data) return
+    const r = query.data
+    saveRecallView({
+      recallNumber: r.recallNumber,
+      productDescription: r.productDescription,
+      recallingFirm: r.recallingFirm,
+      classification: r.classification,
+      status: r.status,
+      reportDate: r.reportDate,
+      viewedAt: new Date().toISOString(),
     })
-    return () => cancelAnimationFrame(frame)
-  }, [scrollToAction, tab])
-
-  const findRefund = () => {
-    setTab('summary')
-    setScrollToAction(true)
-  }
+  }, [query.data?.recallNumber]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const share = async (recall: Recall) => {
     try {
@@ -631,12 +636,9 @@ export function RecallDetail() {
               <SummarySections recall={recall} loading={summaryLoading} />
             </div>
             <aside className="sticky top-0 space-y-4">
-              <div className="space-y-2">
-                <Button onClick={findRefund}>Find refund</Button>
-                <div className="grid grid-cols-2 gap-2">
-                  {shareButton}
-                  {saveButton}
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                {shareButton}
+                {saveButton}
               </div>
               {features.alerts && (
                 <DesktopCard title="Your items">
@@ -679,7 +681,6 @@ export function RecallDetail() {
         </Tabs>
       </Screen>
       <div className="flex flex-none gap-2 border-t bg-card px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 md:px-6">
-        <Button onClick={findRefund}>Find refund</Button>
         {shareButton}
         {saveButton}
       </div>

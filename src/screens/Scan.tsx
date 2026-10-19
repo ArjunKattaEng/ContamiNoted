@@ -13,6 +13,7 @@ import { blobFromUrl, prepareReceiptImage } from '@/lib/image'
 import { captureReceipt, isCancel, isNative, scanBarcode, setStatusBar, tap } from '@/lib/native'
 import { readPhoto, warmUpReader } from '@/lib/scanner'
 import { scanPath } from '@/lib/scan'
+import { saveThumbnail } from '@/lib/thumbnails'
 import { cn } from '@/lib/utils'
 import { features } from '@/lib/features'
 import { isApiError } from '@/services/errors'
@@ -94,6 +95,8 @@ export function Scan() {
   const busy = barcodeScan.isPending || receiptScan.isPending || readingPhoto
   // The web app reads barcodes from its own camera view; the iOS app uses the native scanner
   const liveCamera = mode === 'product' && !isNative
+  // Snapshot captured at detection time (live camera only), saved to thumbnails on success
+  const pendingSnapshot = useRef<string | null>(null)
 
   // Light status-bar icons while this dark screen is showing
   useEffect(() => {
@@ -118,7 +121,24 @@ export function Scan() {
 
   const checkBarcode = (raw: string) => {
     setError(null)
-    barcodeScan.mutate(raw, { onSuccess: showResult, onError: showError })
+    barcodeScan.mutate(raw, {
+      onSuccess: (scan) => {
+        if (pendingSnapshot.current && scan.product?.upc) {
+          saveThumbnail(scan.product.upc, pendingSnapshot.current)
+        }
+        pendingSnapshot.current = null
+        showResult(scan)
+      },
+      onError: (err) => {
+        pendingSnapshot.current = null
+        showError(err)
+      },
+    })
+  }
+
+  const onLiveCode = (raw: string) => {
+    pendingSnapshot.current = camera.current?.captureSnapshot() ?? null
+    checkBarcode(raw)
   }
 
   const onCameraError = useCallback((kind: CameraError) => setCameraError(kind), [])
@@ -203,7 +223,7 @@ export function Scan() {
 
       {liveCamera && !cameraError ? (
         <div className="my-6 w-full max-w-md">
-          <BarcodeCamera key={cameraKey} ref={camera} paused={busy} onCode={checkBarcode} onError={onCameraError} />
+          <BarcodeCamera key={cameraKey} ref={camera} paused={busy} onCode={onLiveCode} onError={onCameraError} />
         </div>
       ) : (
         <div className="my-6 grid size-[220px] flex-none place-items-center rounded-2xl border-[3px] border-dashed border-white/65">
