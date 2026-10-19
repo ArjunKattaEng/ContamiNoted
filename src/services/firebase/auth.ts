@@ -80,7 +80,10 @@ function toProfile(data: ProfileDoc, method: SignInMethod): UserProfile {
     ...(data.email && { email: data.email }),
     ...(method && { signInMethod: method }),
     createdAt: data.createdAt,
-    prefs: { recheckOnOpen: data.prefs?.recheckOnOpen ?? true },
+    prefs: {
+      recheckOnOpen: data.prefs?.recheckOnOpen ?? true,
+      ...(Array.isArray(data.prefs?.notifyCategories) && { notifyCategories: data.prefs.notifyCategories }),
+    },
   }
 }
 
@@ -113,7 +116,13 @@ async function ensureProfile(user: User): Promise<ProfileDoc> {
     ...(user.displayName && { displayName: user.displayName.slice(0, 100) }),
     createdAt: created,
     updatedAt: created,
-    prefs: { recheckOnOpen: devicePrefs().recheckOnOpen !== false },
+    prefs: (() => {
+      const d = devicePrefs()
+      return {
+        recheckOnOpen: d.recheckOnOpen !== false,
+        ...(Array.isArray(d.notifyCategories) && d.notifyCategories.length > 0 && { notifyCategories: d.notifyCategories }),
+      }
+    })(),
   }
   try {
     await setDoc(ref, profile)
@@ -310,7 +319,11 @@ export const firebaseAuth: AuthService = {
       const { db } = await getFirebase()
       const current = await ensureProfile(user)
       const merged = { ...current.prefs, ...prefs }
-      const next: ProfileDoc = { ...current, prefs: { recheckOnOpen: merged.recheckOnOpen !== false }, updatedAt: now() }
+      const nextPrefs: UserPrefs = {
+        recheckOnOpen: merged.recheckOnOpen !== false,
+        ...(Array.isArray(merged.notifyCategories) && { notifyCategories: merged.notifyCategories }),
+      }
+      const next: ProfileDoc = { ...current, prefs: nextPrefs, updatedAt: now() }
       await setDoc(doc(db, 'users', user.uid), { prefs: next.prefs, updatedAt: next.updatedAt }, { merge: true })
       return toProfile(next, await signInMethod(user))
     })
