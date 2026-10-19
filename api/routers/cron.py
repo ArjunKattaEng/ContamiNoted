@@ -57,7 +57,11 @@ def _check_secret(request: Request) -> None:
 
 
 @router.get("/api/cron/notify-recalls")
-async def notify_recalls(request: Request, openfda: OpenFdaClient = Depends(get_openfda)) -> dict:
+async def notify_recalls(
+    request: Request,
+    openfda: OpenFdaClient = Depends(get_openfda),
+    days: int = 1,
+) -> dict:
     _check_secret(request)
 
     if not settings.firebase_service_account_json:
@@ -68,10 +72,13 @@ async def notify_recalls(request: Request, openfda: OpenFdaClient = Depends(get_
         logger.warning("Cron: RESEND_API_KEY not set; cannot send emails")
         return {"status": "skipped", "reason": "resend_not_configured"}
 
-    # Fetch yesterday's new active recalls
+    # Cap the lookback window (the ?days param is only for manual testing)
+    lookback = max(1, min(days, 30))
+
+    # Fetch new active recalls in the lookback window
     today = date.today()
     yesterday = today - timedelta(days=1)
-    search = within_days(STATUS_SEARCH["active"], 1, today=today)
+    search = within_days(STATUS_SEARCH["active"], lookback, today=today)
     recalls, _ = await openfda.query(search, limit=200, sort="report_date:desc")
     categorized = [r for r in recalls if r.category]
     logger.info("Cron: %d new recalls, %d with a category", len(recalls), len(categorized))
