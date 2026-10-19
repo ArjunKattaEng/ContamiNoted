@@ -123,8 +123,16 @@ def test_nuts_before_dairy_cashew_butter() -> None:
 
 
 def test_ready_to_eat_before_produce_salad() -> None:
-    """A packaged salad product must be Ready-to-Eat, not Produce."""
+    """A packaged prepared salad must be Ready-to-Eat, not Produce."""
     assert categorize_recall(_recall("Prepared Greek Salad, 8 oz")) == "Ready-to-Eat"
+
+
+def test_salad_sprouting_mixture_is_produce() -> None:
+    """'Salad' used as an adjective (salad sprouts) must not pull a produce recall into Ready-to-Eat."""
+    assert categorize_recall(_recall(
+        "Salad Sprouting Mixture - Broccoli, Mustard, Alfalfa and Cabbage, "
+        "packaged in heat-sealed resealable bags"
+    )) == "Produce"
 
 
 # --- Exclude rules ---

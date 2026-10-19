@@ -64,8 +64,8 @@ CATEGORIES: list[tuple[str, re.Pattern[str], re.Pattern[str] | None]] = [
     (
         "Ready-to-Eat",
         re.compile(
-            r"\b(ready to eat|ready.to.eat|rte|sandwich|sub|wrap|burrito|salad kit|meal kit"
-            r"|salad|entree|entrée|prepared|deli|sushi|hummus|salsa|guacamole|pesto|dip"
+            r"\b(ready to eat|ready.to.eat|rte|sandwich|sub|wrap|burrito|salad kit|salad mix"
+            r"|meal kit|entree|entrée|prepared|deli|sushi|hummus|salsa|guacamole|pesto|dip"
             r"|pasta salad|dumpling|soup|pizza|quiche|parfait|bowl|lunch kit|fresh cut"
             r"|cut fruit|fruit cup|fruit mix)s?\b",
             re.I,
