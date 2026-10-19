@@ -95,6 +95,33 @@ describe('users/{uid}: profile', () => {
     await assertFails(setDoc(doc(alice(), 'users/alice'), noPrefs))
   })
 
+  it('allows notifyCategories as a string list', async () => {
+    await assertSucceeds(
+      setDoc(doc(alice(), 'users/alice'), {
+        ...profile(),
+        prefs: { recheckOnOpen: true, notifyCategories: ['Dairy', 'Seafood'] },
+      }),
+    )
+  })
+
+  it('rejects notifyCategories larger than 20 items', async () => {
+    await assertFails(
+      setDoc(doc(alice(), 'users/alice'), {
+        ...profile(),
+        prefs: { recheckOnOpen: true, notifyCategories: Array(21).fill('Dairy') },
+      }),
+    )
+  })
+
+  it('rejects notifyCategories as a non-list', async () => {
+    await assertFails(
+      setDoc(doc(alice(), 'users/alice'), {
+        ...profile(),
+        prefs: { recheckOnOpen: true, notifyCategories: 'Dairy' },
+      }),
+    )
+  })
+
   it('only the owner reads it, and nobody lists users', async () => {
     await seed('users/alice', profile())
     await assertSucceeds(getDoc(doc(alice(), 'users/alice')))

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.errors import register_error_handlers
-from api.routers import meta, recalls, scan, watchlist
+from api.routers import cron, meta, recalls, scan, watchlist
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
@@ -28,6 +28,7 @@ app.include_router(recalls.router)
 app.include_router(meta.router)
 app.include_router(scan.router)
 app.include_router(watchlist.router)
+app.include_router(cron.router)
 
 
 @app.get("/api/health")

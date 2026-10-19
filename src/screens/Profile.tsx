@@ -13,9 +13,10 @@ import { useLastWatchCheck, useRecheck } from '@/hooks/use-alerts'
 import { useCurrentUser, useDeleteAccount, useSignOut } from '@/hooks/use-auth'
 import { queryKeys } from '@/hooks/queryKeys'
 import { useDataSourceStatus } from '@/hooks/use-meta'
-import { useRecheckOnOpenPref } from '@/hooks/use-prefs'
+import { useNotifyCategoriesPref, useRecheckOnOpenPref } from '@/hooks/use-prefs'
 import { useProducts } from '@/hooks/use-products'
 import { useSavedRecalls } from '@/hooks/use-saved'
+import { FOOD_CATEGORIES } from '@/lib/categories'
 import { formatDate, formatTimeAgo } from '@/lib/format'
 import { features } from '@/lib/features'
 import { clearLocalSaved } from '@/services/local/saved'
@@ -45,7 +46,7 @@ function GuestCard() {
   const navigate = useNavigate()
   return (
     <div className="rounded-lg border border-border/60 bg-card shadow-card p-4">
-      <strong>You’re using RecallGuard as a guest</strong>
+      <strong>You're using RecallGuard as a guest</strong>
       <p className="mt-1 text-sm text-muted-foreground">
         Create a free account to keep your scans, alerts and saved recalls on all your devices.
       </p>
@@ -79,7 +80,61 @@ function AccountCard({ user }: { user: UserProfile }) {
   )
 }
 
-function AlertSettings() {
+function CategoryEmailNote({ user }: { user: ReturnType<typeof useCurrentUser>['data'] }) {
+  if (!features.accounts) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">
+        Create a free account to get email alerts when these categories have new recalls.
+      </p>
+    )
+  }
+  if (!user || user.isGuest) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">
+        Sign in to receive email alerts when these categories have new recalls.
+      </p>
+    )
+  }
+  return (
+    <p className="mt-2 text-xs text-muted-foreground">
+      Email alerts are coming soon. Your preferences are saved.
+    </p>
+  )
+}
+
+function CategoryPicker({ user }: { user: ReturnType<typeof useCurrentUser>['data'] }) {
+  const prefs = useNotifyCategoriesPref()
+  const selected = new Set(prefs.value)
+
+  const toggle = (id: string) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    prefs.set(Array.from(next))
+  }
+
+  return (
+    <div className="border-b px-1 py-3">
+      <p className="mb-2 text-sm font-semibold">Notify me about recalls in these categories</p>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Food categories for recall notifications">
+        {FOOD_CATEGORIES.map((cat) => (
+          <Button
+            key={cat.id}
+            size="sm"
+            variant={selected.has(cat.id) ? 'default' : 'secondary'}
+            onClick={() => toggle(cat.id)}
+            aria-pressed={selected.has(cat.id)}
+          >
+            {cat.id}
+          </Button>
+        ))}
+      </div>
+      <CategoryEmailNote user={user} />
+    </div>
+  )
+}
+
+function AlertSettings({ user }: { user: ReturnType<typeof useCurrentUser>['data'] }) {
   const recheckOnOpen = useRecheckOnOpenPref()
   const recheck = useRecheck()
   const lastCheck = useLastWatchCheck().data
@@ -94,17 +149,18 @@ function AlertSettings() {
               ? 'No new recalls for your items'
               : `${result.newAlerts.length} new ${result.newAlerts.length === 1 ? 'alert' : 'alerts'} for your items`,
         ),
-      onError: () => toast('Couldn’t check for new recalls'),
+      onError: () => toast("Couldn't check for new recalls"),
     })
 
   return (
     <Section title="Recall alerts">
       <ToggleRow
         label="Re-check my items when I open the app"
-        description="Matches the products you’ve scanned against newly announced FDA recalls."
+        description="Matches the products you've scanned against newly announced FDA recalls."
         checked={recheckOnOpen.value ?? false}
         onChange={recheckOnOpen.set}
       />
+      <CategoryPicker user={user} />
       <div className="flex items-center justify-between gap-3 border-b px-1 py-3">
         <span className="text-sm text-muted-foreground">
           {lastCheck ? `Last checked ${formatTimeAgo(lastCheck)}` : 'Not checked yet'}
@@ -128,7 +184,7 @@ function DataSources() {
     <Section title="Data & sources">
       <div className="space-y-2 rounded-lg border border-border/60 bg-card shadow-card p-4 text-sm">
         <p>
-          Recalls come from the FDA’s openFDA food enforcement reports
+          Recalls come from the FDA's openFDA food enforcement reports
           {status && <> (last updated {formatDate(status.openFdaLastUpdated)})</>}.
         </p>
         <p className="text-muted-foreground">
@@ -184,7 +240,7 @@ function AccountActions({ user }: { user: UserProfile }) {
         toast('Logged out. Your data is saved in your account.')
         navigate('/home')
       },
-      onError: () => toast('Couldn’t log out. Check your connection and try again.'),
+      onError: () => toast("Couldn't log out. Check your connection and try again."),
     })
 
   const onDelete = (e: FormEvent) => {
@@ -205,7 +261,7 @@ function AccountActions({ user }: { user: UserProfile }) {
         },
         onError: (err) => {
           if (isApiError(err) && err.code === 'cancelled') return
-          setDeleteError(isApiError(err) ? err.message : 'Couldn’t delete your data. Please try again.')
+          setDeleteError(isApiError(err) ? err.message : "Couldn't delete your data. Please try again.")
           if (needsPassword) {
             passwordField.current?.focus()
             passwordField.current?.select()
@@ -234,8 +290,8 @@ function AccountActions({ user }: { user: UserProfile }) {
             {user.isGuest ? 'Clear all your data from this device?' : 'Delete your account permanently?'}
           </strong>
           <p className="mt-1 text-sm">
-            Your scanned products, alerts and saved recalls will be deleted. This can’t be undone.
-            {!user.isGuest && user.signInMethod === 'google' && ' You’ll confirm with your Google account.'}
+            Your scanned products, alerts and saved recalls will be deleted. This can't be undone.
+            {!user.isGuest && user.signInMethod === 'google' && " You'll confirm with your Google account."}
           </p>
           {needsPassword ? (
             <div className="mt-3">
@@ -326,7 +382,7 @@ function SavedInAccount() {
       <div className="space-y-2 rounded-lg border border-border/60 bg-card shadow-card p-4 text-sm">
         <p>
           {count(saved.length, 'saved recall', 'saved recalls')}
-          {features.history && <>, {count(products.length, 'scanned product', 'scanned products')}</>}. They’re on
+          {features.history && <>, {count(products.length, 'scanned product', 'scanned products')}</>}. They're on
           every device you log in on.
         </p>
         <Link to="/privacy" className="font-bold underline underline-offset-2">
@@ -365,7 +421,7 @@ function SavedOnDevice() {
       <div className="space-y-3 rounded-lg border border-border/60 bg-card shadow-card p-4 text-sm">
         <p>
           {saved.length === 0
-            ? 'You haven’t saved any recalls yet. Tap the star on a recall to keep it.'
+            ? "You haven't saved any recalls yet. Tap the star on a recall to keep it."
             : `${saved.length} saved ${saved.length === 1 ? 'recall' : 'recalls'}, stored in this browser or app only.`}
         </p>
         {saved.length > 0 && <ClearButton label="Clear saved recalls" confirmLabel="Clear saved" onConfirm={clearSaved} />}
@@ -373,7 +429,7 @@ function SavedOnDevice() {
           <>
             <p>
               {products.length === 0
-                ? 'You haven’t scanned any products yet.'
+                ? "You haven't scanned any products yet."
                 : `${products.length} scanned ${products.length === 1 ? 'product' : 'products'}, stored in this browser or app only.`}
             </p>
             {products.length > 0 && (
@@ -409,7 +465,7 @@ export function Profile() {
       <PageTitle>Profile</PageTitle>
       <div className="desktop:max-w-2xl">
         {user && !user.isGuest ? <AccountCard user={user} /> : <GuestCard />}
-        {features.alerts && <AlertSettings />}
+        {features.alerts && <AlertSettings user={user} />}
         {user && !user.isGuest ? <SavedInAccount /> : <SavedOnDevice />}
         <DataSources />
         {user && <AccountActions key={user.uid} user={user} />}

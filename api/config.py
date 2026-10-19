@@ -37,6 +37,13 @@ class Settings:
     # Optional: without a key openFDA allows ~1,000 requests/day per IP, which shared Vercel IPs can exhaust
     openfda_api_key: str | None = field(default_factory=lambda: os.environ.get("OPENFDA_API_KEY") or None)
     allowed_origins: list[str] = field(default_factory=lambda: DEFAULT_ORIGINS + _list("ALLOWED_ORIGINS"))
+    # Phase 2: Vercel Cron + Resend email notifications (requires Firebase accounts in production)
+    cron_secret: str | None = field(default_factory=lambda: os.environ.get("CRON_SECRET") or None)
+    resend_api_key: str | None = field(default_factory=lambda: os.environ.get("RESEND_API_KEY") or None)
+    # Firebase Admin SDK: JSON string of the service account key (for server-side Firestore reads in the cron)
+    firebase_service_account_json: str | None = field(
+        default_factory=lambda: os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or None
+    )
 
 
 settings = Settings()

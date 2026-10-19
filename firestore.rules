@@ -38,8 +38,10 @@ service cloud.firestore {
 
     function validPrefs(prefs) {
       return prefs is map
-        && prefs.keys().hasOnly(['recheckOnOpen'])
-        && prefs.recheckOnOpen is bool;
+        && prefs.keys().hasOnly(['recheckOnOpen', 'notifyCategories'])
+        && prefs.recheckOnOpen is bool
+        && (!('notifyCategories' in prefs)
+            || (prefs.notifyCategories is list && prefs.notifyCategories.size() <= 20));
     }
 
     // A compact recall snapshot (RecallRef) embedded in saved recalls and alerts

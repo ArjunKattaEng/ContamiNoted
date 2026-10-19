@@ -14,6 +14,7 @@ import httpx
 
 from api.errors import ApiError
 from api.models import Recall
+from api.services.categories import categorize_recall
 from api.services.loop import PerLoop
 
 logger = logging.getLogger("recallguard.openfda")
@@ -131,7 +132,7 @@ def normalize(record: dict[str, Any]) -> Recall:
     code_info = " ".join(filter(None, [_clean(record.get("code_info")), _clean(record.get("more_code_info"))])) or None
     initiated = _date(record.get("recall_initiation_date"))
     reported = _date(record.get("report_date")) or initiated or ""
-    return Recall(
+    recall = Recall(
         recall_number=record.get("recall_number", ""),
         event_id=str(record.get("event_id", "")),
         status=_status(record.get("status")),
@@ -149,6 +150,7 @@ def normalize(record: dict[str, Any]) -> Recall:
         voluntary_mandated=_clean(record.get("voluntary_mandated")),
         termination_date=_date(record.get("termination_date")),
     )
+    return recall.model_copy(update={"category": categorize_recall(recall)})
 
 
 class OpenFdaClient:

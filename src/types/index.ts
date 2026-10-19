@@ -57,6 +57,8 @@ export interface Recall {
   voluntaryMandated?: string
   /** YYYY-MM-DD, when FDA closed the recall (Terminated recalls only) */
   terminationDate?: string
+  /** Our taxonomy category, e.g. "Dairy". Absent when no keyword matched product_description. */
+  category?: string
   summary: RecallSummary | null
 }
 
@@ -211,6 +213,8 @@ export interface RecheckResult {
 
 export interface UserPrefs {
   recheckOnOpen: boolean
+  /** Category IDs the user wants emailed about (e.g. ["Dairy", "Seafood"]). */
+  notifyCategories?: string[]
 }
 
 export interface UserProfile {

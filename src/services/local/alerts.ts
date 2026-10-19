@@ -2,6 +2,7 @@
 // come from barcode scans with a match and from re-checks (POST /api/watchlist/check, answered statelessly).
 // Each value is kept in memory too, so the app works for the session when storage is unavailable.
 import { readJson, storageAvailable, writeJson } from '@/lib/storage'
+import { FOOD_CATEGORY_IDS } from '@/lib/categories'
 import type { Alert, UserPrefs } from '@/types'
 import { alertId, alertsFromScan, makeAlert, mergeAlerts } from '../user-data'
 
@@ -32,6 +33,11 @@ let lastCheck: string | null = readJson<string>(CHECK_KEY)
 /** Only known preferences, with valid values (anything else in storage is ignored). */
 const cleanPrefs = (value: Partial<UserPrefs> | null | undefined): UserPrefs => ({
   recheckOnOpen: value?.recheckOnOpen !== false,
+  ...(Array.isArray(value?.notifyCategories) && {
+    notifyCategories: (value.notifyCategories as unknown[]).filter(
+      (c): c is string => typeof c === 'string' && FOOD_CATEGORY_IDS.includes(c),
+    ),
+  }),
 })
 let prefs: UserPrefs = cleanPrefs(readJson<Partial<UserPrefs>>(PREFS_KEY))
 

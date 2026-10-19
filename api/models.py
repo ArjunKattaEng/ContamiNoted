@@ -50,6 +50,7 @@ class Recall(CamelModel):
     report_date: str
     voluntary_mandated: str | None = None
     termination_date: str | None = None  # when FDA closed the recall (Terminated recalls only)
+    category: str | None = None  # our taxonomy, e.g. "Dairy"; absent when product_description has no match
     summary: RecallSummary | None = None
 
 
