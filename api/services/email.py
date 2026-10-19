@@ -81,7 +81,7 @@ def send_recall_alert(to_email: str, items: list[RecallEmailItem]) -> bool:
     try:
         r = _resend()
         r.Emails.send({
-            "from": "RecallGuard <alerts@recallguard.app>",
+            "from": "RecallGuard <onboarding@resend.dev>",
             "to": [to_email],
             "subject": subject,
             "html": html,
