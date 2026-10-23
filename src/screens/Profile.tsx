@@ -46,7 +46,7 @@ function GuestCard() {
   const navigate = useNavigate()
   return (
     <div className="rounded-lg border border-border/60 bg-card shadow-card p-4">
-      <strong>You're using RecallGuard as a guest</strong>
+      <strong>You're using ContamiNoted as a guest</strong>
       <p className="mt-1 text-sm text-muted-foreground">
         Create a free account to keep your scans, alerts and saved recalls on all your devices.
       </p>
@@ -192,7 +192,7 @@ function DataSources() {
           notice.
         </p>
         <Link to="/privacy" className="block font-bold underline underline-offset-2">
-          What RecallGuard stores
+          What ContamiNoted stores
         </Link>
         <a
           href="https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts"
@@ -469,7 +469,7 @@ export function Profile() {
         {user && !user.isGuest ? <SavedInAccount /> : <SavedOnDevice />}
         <DataSources />
         {user && <AccountActions key={user.uid} user={user} />}
-        <p className="mt-6 text-center text-xs text-muted-foreground">RecallGuard {__APP_VERSION__}</p>
+        <p className="mt-6 text-center text-xs text-muted-foreground">ContamiNoted {__APP_VERSION__}</p>
       </div>
     </Screen>
   )

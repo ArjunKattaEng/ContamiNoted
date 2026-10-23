@@ -1,5 +1,11 @@
 {
-  "appId": "com.recallguard.app",
-  "appName": "RecallGuard",
-  "webDir": "dist"
+  "appId": "com.contaminoted.app",
+  "appName": "ContamiNoted",
+  "webDir": "dist",
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  }
 }

@@ -12,7 +12,7 @@ export function Logo({ large = false }: { large?: boolean }) {
       >
         <ShieldCheck className={large ? 'size-10' : 'size-4'} aria-hidden />
       </span>
-      <span>RecallGuard</span>
+      <span>ContamiNoted</span>
     </div>
   )
 }

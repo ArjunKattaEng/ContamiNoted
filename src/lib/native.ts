@@ -72,7 +72,7 @@ export async function shareRecall(recall: ShareableRecall): Promise<'shared' | '
     .join('\n\n')
   const { value: canShare } = await Share.canShare()
   if (canShare) {
-    await Share.share({ title: 'RecallGuard alert', text, dialogTitle: 'Share recall alert' })
+    await Share.share({ title: 'ContamiNoted alert', text, dialogTitle: 'Share recall alert' })
     return 'shared'
   }
   await navigator.clipboard.writeText(text)

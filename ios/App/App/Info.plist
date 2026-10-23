@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>RecallGuard</string>
+	<string>ContamiNoted</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,11 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>RecallGuard uses the camera to scan receipts and product barcodes so it can check them against FDA recalls.</string>
+	<string>ContamiNoted uses the camera to scan receipts and product barcodes so it can check them against FDA recalls.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>RecallGuard can save receipt photos to your library.</string>
+	<string>ContamiNoted can save receipt photos to your library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>RecallGuard can read receipt and barcode photos from your library to check them for recalled products.</string>
+	<string>ContamiNoted can read receipt and barcode photos from your library to check them for recalled products.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -72,5 +72,14 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.270044328388-u1r5qalad1uld280kls7000m2725oplv</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

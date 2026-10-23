@@ -30,13 +30,13 @@ export function Privacy() {
             Your scanned products, alerts, saved recalls and settings stay in this browser or app only. To remove your
             products, alerts and saved recalls, use Profile →{' '}
             {features.accounts ? 'Clear my data' : 'Clear saved recalls and Clear scan history and alerts'}; clearing
-            this site’s data removes everything.
+            this site's data removes everything.
           </p>
           <p>
             When you check a product, and when the app re-checks your products for new recalls, their barcodes, names
-            and brands are sent to our server. It looks them up with Open Food Facts and the FDA’s openFDA service. Our
-            server doesn’t store them: it keeps a product’s result in memory for up to 15 minutes to answer repeat checks
-            faster, and barcodes can appear for a short time in its activity logs. A product’s photo, when Open Food Facts
+            and brands are sent to our server. It looks them up with Open Food Facts and the FDA's openFDA service. Our
+            server doesn't store them: it keeps a product's result in memory for up to 15 minutes to answer repeat checks
+            faster, and barcodes can appear for a short time in its activity logs. A product's photo, when Open Food Facts
             has one, loads straight from Open Food Facts, which sees your IP address as any website would.
           </p>
         </Part>
@@ -44,10 +44,10 @@ export function Privacy() {
           <Part title="With an account">
             <p>
               Your name, email address, scanned products, alerts, saved recalls and settings are stored in your account
-              with Google Firebase, so they’re on every device you log in on. Other RecallGuard users can’t see them.
+              with Google Firebase, so they're on every device you log in on. Other ContamiNoted users can't see them.
             </p>
             <p>
-              If you continue with Google, Google shares your name, email address and profile picture with us. We don’t
+              If you continue with Google, Google shares your name, email address and profile picture with us. We don't
               get your Google password or anything else from your Google account.
             </p>
             <p>
@@ -57,7 +57,7 @@ export function Privacy() {
             <p>Accounts are for people 13 and older.</p>
           </Part>
         )}
-        <Part title="What we don’t do">
+        <Part title="What we don't do">
           <p>No ads and no tracking. We never sell your data or share it with advertisers.</p>
         </Part>
         <p className="mt-6 text-xs text-muted-foreground">Last updated {LAST_UPDATED}.</p>

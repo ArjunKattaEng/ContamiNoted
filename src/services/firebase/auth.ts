@@ -14,6 +14,7 @@ import {
   reauthenticateWithCredential,
   reauthenticateWithPopup,
   sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -140,7 +141,7 @@ async function mergeDeviceData(uid: string): Promise<void> {
   try {
     await afterSignIn(uid)
   } catch (err) {
-    console.warn('Couldn’t move this device’s data into the account yet; will retry', err)
+    console.warn("Couldn't move this device's data into the account yet; will retry", err)
   }
 }
 
@@ -159,8 +160,8 @@ async function finishSignIn(user: User): Promise<UserProfile> {
     throw new ApiError(
       code,
       code === 'upstream_error'
-        ? 'Your account couldn’t be opened. Check your connection, then log in again.'
-        : 'Your account couldn’t be opened right now. Please log in again.',
+        ? "Your account couldn't be opened. Check your connection, then log in again."
+        : "Your account couldn't be opened right now. Please log in again.",
       0,
     )
   }
@@ -202,7 +203,7 @@ async function confirmRecentSignIn(user: User, password?: string): Promise<void>
     try {
       await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
     } catch (err) {
-      if (toApiError(err).code === 'unauthenticated') throw new ApiError('unauthenticated', 'That password isn’t right.', 0)
+      if (toApiError(err).code === 'unauthenticated') throw new ApiError('unauthenticated', "That password isn't right.", 0)
       throw err
     }
     return
@@ -247,7 +248,7 @@ export const firebaseAuth: AuthService = {
         return guestProfile()
       }
       // Still signed in; the profile and the merge are retried on the next start
-      console.warn('Couldn’t read the account profile; using this device’s settings for now', err)
+      console.warn("Couldn't read the account profile; using this device's settings for now", err)
       profile = fallbackProfile(user, method)
     }
     // Someone signed in or out while this was loading: answer for whoever is signed in now
@@ -290,11 +291,23 @@ export const firebaseAuth: AuthService = {
   },
 
   signInWithGoogle: async () => {
-    // Google blocks its sign-in page inside app web views; the iOS app needs a native plugin for this
-    if (isNative) throw new ApiError('not_implemented', 'Google sign-in isn’t available in the iOS app yet.', 0)
     const { auth } = await getFirebase()
-    // A popup, not a redirect: redirect sign-in breaks in browsers that block third-party storage for
-    // apps hosted outside Firebase Hosting (https://firebase.google.com/docs/auth/web/redirect-best-practices)
+    if (isNative) {
+      // Native Google Sign-In via @capacitor-firebase/authentication (avoids the web popup blocked in WebViews)
+      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
+      let result: Awaited<ReturnType<typeof FirebaseAuthentication.signInWithGoogle>>
+      try {
+        result = await FirebaseAuthentication.signInWithGoogle()
+      } catch (err) {
+        // User cancelled the native sign-in sheet
+        throw new ApiError('cancelled', 'Google sign-in was cancelled.', 0)
+      }
+      if (!result.credential?.idToken) throw new ApiError('cancelled', 'Google sign-in was cancelled.', 0)
+      const credential = GoogleAuthProvider.credential(result.credential.idToken, result.credential.accessToken ?? undefined)
+      const { user } = await withApiErrors(() => signInWithCredential(auth, credential))
+      return finishSignIn(user)
+    }
+    // Web: popup sign-in (not a redirect — redirect breaks in browsers that block third-party storage)
     const { user } = await withApiErrors(() => signInWithPopup(auth, googleProvider()))
     return finishSignIn(user)
   },

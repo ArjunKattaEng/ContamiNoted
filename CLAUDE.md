@@ -384,3 +384,13 @@ Roughly in priority order. When you finish one, update the status tables in `doc
 13. Native builds need `VITE_API_BASE_URL=https://contami-noted.vercel.app` (then `npm run ios:sync`); CORS already allows `capacitor://localhost`.
 14. Test on a simulator or device beyond the splash screen (`npm run ios:run`, Xcode 27): live recalls and summaries, saving, safe areas in landscape, the native barcode scanner, and alerts on resume. Later, receipt upload.
 15. App Store prep: app icon and splash, the Sign in with Apple capability, privacy manifest and App Privacy labels (camera, account data), in-app account deletion (already in Profile), then TestFlight.
+
+
+## curl command for email sent
+
+curl -s -X GET https://contami-noted.vercel.app/api/cron/notify-recalls \
+  -H "Authorization: Bearer <KEY>" | jq .
+
+
+  curl -s "https://contami-noted.vercel.app/api/cron/notify-recalls?days=14" \
+  -H "Authorization: Bearer <KEY>" | jq .

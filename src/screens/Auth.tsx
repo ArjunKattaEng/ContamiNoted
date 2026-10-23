@@ -13,7 +13,6 @@ import { useCurrentUser, useResetPassword, useSignIn, useSignUp, useSocialSignIn
 import { features } from '@/lib/features'
 import { useProducts } from '@/hooks/use-products'
 import { useSavedRecalls } from '@/hooks/use-saved'
-import { isNative } from '@/lib/native'
 import { markOnboarded } from '@/lib/storage'
 import { isApiError } from '@/services/errors'
 import type { UserProfile } from '@/types'
@@ -25,7 +24,7 @@ const isCancelled = (err: unknown) => isApiError(err) && err.code === 'cancelled
 // Until accounts are live (features.accounts), these screens are placeholders: forms validate,
 // but nothing is created or stored, and submitting explains that accounts are coming soon.
 const accountsLive = features.accounts
-const COMING_SOON = 'Accounts are coming soon. Sign-up and log-in aren’t available yet.'
+const COMING_SOON = "Accounts are coming soon. Sign-up and log-in aren't available yet."
 const showComingSoon = () => toast(COMING_SOON)
 
 function ComingSoonNotice() {
@@ -35,7 +34,7 @@ function ComingSoonNotice() {
       role="status"
       className="mb-4 rounded-md border border-dashed bg-card px-3 py-2 text-center text-[13px] text-muted-foreground"
     >
-      <span className="font-bold">Coming soon.</span> Accounts aren’t available yet. Your scans, alerts and saved
+      <span className="font-bold">Coming soon.</span> Accounts aren't available yet. Your scans, alerts and saved
       recalls stay on this device for now.
     </p>
   )
@@ -74,10 +73,6 @@ function GoogleMark() {
   return <img src="/brand/google-g.svg" alt="" aria-hidden className="size-5" onError={() => setMissing(true)} />
 }
 
-/**
- * Google sign-in, in a popup. Not offered in the iOS app (Google blocks its sign-in page inside app web views;
- * that needs a native plugin, and Sign in with Apple alongside it). Sign in with Apple isn't built yet.
- */
 function SocialSignIn({
   onSignedIn,
   onError,
@@ -86,7 +81,6 @@ function SocialSignIn({
   onError: (message: string) => void
 }) {
   const social = useSocialSignIn()
-  if (isNative) return null
   const signIn = () => {
     if (!accountsLive) return showComingSoon()
     social.mutate(undefined, {
@@ -158,7 +152,7 @@ export function Login() {
       title="Log in"
       footer={
         <>
-          New to RecallGuard?{' '}
+          New to ContamiNoted?{' '}
           <Link to="/signup" className="font-bold underline underline-offset-2">
             Create an account
           </Link>
@@ -216,7 +210,7 @@ const signUpSchema = z
     password: z.string().min(6, 'Use at least 6 characters'),
     confirm: z.string(),
   })
-  .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords don’t match' })
+  .refine((v) => v.password === v.confirm, { path: ['confirm'], message: "Passwords don't match" })
 
 export function SignUp() {
   const user = useCurrentUser().data
@@ -336,12 +330,12 @@ export function ForgotPassword() {
           <MailCheck className="size-10 text-success" strokeWidth={1.5} aria-hidden />
           <strong>Check your email</strong>
           <p className="text-sm text-muted-foreground">
-            If an account exists for {sentTo}, we’ve sent a link to reset your password.
+            If an account exists for {sentTo}, we've sent a link to reset your password.
           </p>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
-          <p className="text-sm text-muted-foreground">Enter your account email and we’ll send you a reset link.</p>
+          <p className="text-sm text-muted-foreground">Enter your account email and we'll send you a reset link.</p>
           <FormField
             label="Email"
             type="email"
