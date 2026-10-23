@@ -6,7 +6,7 @@ Checks your groceries against FDA food recalls, on the web (phone, tablet and de
 - **Live:** recall alerts for scanned products (re-checked when the app opens; kept on the device).
 - **Coming soon:** receipt scanning and accounts. Their screens are built and switched on in `src/lib/features.ts` as each backend lands.
 
-Production: https://contami-noted.vercel.app
+Production: https://www.contaminoted.com (also https://contami-noted.vercel.app)
 
 ## Run
 

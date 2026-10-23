@@ -12,7 +12,7 @@
 | 3. Recall screens + responsive layout (phone/tablet vs desktop) | Done |
 | 4. Scan flows and history | Done |
 | 5. Auth (mock), Profile, alerts and re-check, Developer panel | Done |
-| 6. Polish: code splitting, error boundary, states audit, safe areas, docs | Done; deployed at https://contami-noted.vercel.app |
+| 6. Polish: code splitting, error boundary, states audit, safe areas, docs | Done; deployed at https://www.contaminoted.com |
 | 7. Remove synthetic data; "Coming soon" for features without a backend | Done |
 
 **Backend integration (in progress):**

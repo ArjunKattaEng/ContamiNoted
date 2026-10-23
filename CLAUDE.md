@@ -319,14 +319,14 @@ Built and tested against the Firebase emulators, and **switched off for real use
 
 **Set up the real project (before turning accounts on):**
 1. Create a Firebase project; add a Web app and copy its config into Vercel env vars `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` (these are public identifiers, not secrets; the rules protect the data).
-2. Authentication → Sign-in method: enable Email/Password and Google. Authentication → Settings → Authorized domains: add `contami-noted.vercel.app` (localhost is there already).
+2. Authentication → Sign-in method: enable Email/Password and Google. Authentication → Settings → Authorized domains: add `www.contaminoted.com` and `contaminoted.com` (localhost and `contami-noted.vercel.app` are there already).
 3. Create a Firestore database (production mode), then deploy the rules: `npx --yes firebase-tools@15 deploy --only firestore:rules --project <project-id>` (after `npx --yes firebase-tools@15 login`).
 4. Optional: a custom `authDomain`, so the Google window doesn't say "<project>.firebaseapp.com".
 5. Set `VITE_ACCOUNTS=true` in Vercel (Preview first), redeploy, and run the walkthrough above against the real project.
 
 ## Deployment
 
-- **Production:** https://contami-noted.vercel.app (Vercel account "thundered"). It deploys from GitHub `ArjunKattaEng/ContamiNoted`, branch `main`, on every push.
+- **Production:** https://www.contaminoted.com (custom domain; `contaminoted.com` redirects to `www`, and the Vercel domain https://contami-noted.vercel.app still works). Vercel account "thundered". It deploys from GitHub `ArjunKattaEng/ContamiNoted`, branch `main`, on every push.
 - **Vercel env vars:** `GEMINI_API_KEY` (Secret) and `OPENFDA_API_KEY` (Secret; needed now that scans and re-checks call openFDA), optionally `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`. `VITE_LIVE_SERVICES` is no longer used and can be deleted.
 - **Pushing:** only the `ArjunKattaEng` GitHub account can push. Run `gh auth switch --user ArjunKattaEng`, then `git push`, then switch back.
 - **Checks after a deploy:**
@@ -381,16 +381,16 @@ Roughly in priority order. When you finish one, update the status tables in `doc
 
 ### iOS release
 
-13. Native builds need `VITE_API_BASE_URL=https://contami-noted.vercel.app` (then `npm run ios:sync`); CORS already allows `capacitor://localhost`.
+13. Native builds need `VITE_API_BASE_URL=https://www.contaminoted.com` (then `npm run ios:sync`); CORS already allows `capacitor://localhost`.
 14. Test on a simulator or device beyond the splash screen (`npm run ios:run`, Xcode 27): live recalls and summaries, saving, safe areas in landscape, the native barcode scanner, and alerts on resume. Later, receipt upload.
 15. App Store prep: app icon and splash, the Sign in with Apple capability, privacy manifest and App Privacy labels (camera, account data), in-app account deletion (already in Profile), then TestFlight.
 
 
 ## curl command for email sent
 
-curl -s -X GET https://contami-noted.vercel.app/api/cron/notify-recalls \
+curl -s -X GET https://www.contaminoted.com/api/cron/notify-recalls \
   -H "Authorization: Bearer <KEY>" | jq .
 
 
-  curl -s "https://contami-noted.vercel.app/api/cron/notify-recalls?days=14" \
+  curl -s "https://www.contaminoted.com/api/cron/notify-recalls?days=14" \
   -H "Authorization: Bearer <KEY>" | jq .

@@ -19,7 +19,7 @@ logger = logging.getLogger("recallguard.openfoodfacts")
 
 PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{code}.json"
 FIELDS = "code,product_name,product_name_en,generic_name,brands,quantity,image_front_small_url,categories,expiration_date"
-USER_AGENT = "RecallGuard/0.1 (student food-recall app; https://contami-noted.vercel.app)"
+USER_AGENT = "ContamiNoted/0.1 (student food-recall app; https://www.contaminoted.com)"
 MAX_TEXT = 120
 
 

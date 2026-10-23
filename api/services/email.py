@@ -14,7 +14,7 @@ from api.models import Recall
 
 logger = logging.getLogger("recallguard.email")
 
-APP_URL = "https://contami-noted.vercel.app"
+APP_URL = "https://www.contaminoted.com"
 
 _client: object | None = None
 
