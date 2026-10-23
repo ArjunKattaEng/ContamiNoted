@@ -298,7 +298,7 @@ export const firebaseAuth: AuthService = {
       let result: Awaited<ReturnType<typeof FirebaseAuthentication.signInWithGoogle>>
       try {
         result = await FirebaseAuthentication.signInWithGoogle()
-      } catch (err) {
+      } catch {
         // User cancelled the native sign-in sheet
         throw new ApiError('cancelled', 'Google sign-in was cancelled.', 0)
       }
